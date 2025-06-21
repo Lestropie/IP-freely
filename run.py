@@ -82,7 +82,7 @@ elif args.analysis_level == "group":
     for subject_label in subjects_to_analyze:
         for brain_file in glob(os.path.join(args.output_dir, f"sub-{subject_label}*.nii*")):
             data = nibabel.load(brain_file).get_fdata()
-            # calcualte average mask size in voxels
+            # calculate average mask size in voxels
             brain_sizes.append((data != 0).sum())
 
     with open(os.path.join(args.output_dir, "avg_brain_size.txt"), 'w') as fp:
