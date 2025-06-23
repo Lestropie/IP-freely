@@ -1,0 +1,137 @@
+{
+    "author": "Robert E. Smith <robert.smith@florey.edu.au>",
+    "command-line": "/run.py BIDS_DIR GRAPH METADATA OVERRIDES RULESET WARNINGS_AS_ERRORS",
+    "container-image": {
+        "image": "bids/ip-freely",
+        "type": "docker"
+    },
+    "description": "See https://github.com/Lestropie/IP-Freely",
+    "descriptor-url": "https://github.com/Lestropie/IP-Freely/blob/master/boutiques/ip-freely.json",
+    "inputs": [
+        {
+            "description": "A directory containing a dataset formatted according to the BIDS standard.",
+            "id": "bids_dir",
+            "name": "BIDS directory",
+            "optional": false,
+            "type": "File",
+            "value-key": "BIDS_DIR"
+        },
+        {
+            "command-line-flag": "--graph",
+            "description": "Save the full data-metadata filesystem association graph to a JSON file.",
+            "id": "graph",
+            "name": "Graph",
+            "optional": true,
+            "type": "String",
+            "value-key": "GRAPH"
+        },
+        {
+            "command-line-flag": "--metadata",
+            "description": "Save the aggregate metadata associated with all data files to a JSON file.",
+            "id": "metadata",
+            "name": "Metadata",
+            "optional": true,
+            "type": "String",
+            "value-key": "METADATA"
+        },
+        {
+            "command-line-flag": "--overrides",
+            "description": "Save information about presence of key-value metadata field overrides to a JSON file.",
+            "id": "overrides",
+            "name": "Overrides",
+            "optional": true,
+            "type": "String",
+            "value-key": "OVERRIDES"
+        },
+        {
+            "command-line-flag": "--ruleset",
+            "description": "Analyse the dataset under a specific IP ruleset.",
+            "id": "ruleset",
+            "name": "Ruleset",
+            "optional": true,
+            "type": "String",
+            "value-choices": [
+                "1.x",
+                "PR1003",
+                "I1195",
+                "forbidden"
+            ],
+            "value-key": "RULESET"
+        },
+        {
+            "command-line-flag": "--warnings-as-errors",
+            "description": "Treat warnings as errors by yielding a non-zero return code.",
+            "id": "warnaserr",
+            "name": "Warnings-as-Errors",
+            "optional": true,
+            "type": "Flag",
+            "value-key": "WARNINGS_AS_ERRORS"
+        }
+    ],
+    "invocation-schema": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "additionalProperties": false,
+        "description": "Invocation schema for BIDS IP-Freely.",
+        "properties": {
+            "bids_dir": {
+                "type": "string"
+            },
+            "graph": {
+                "type": "string"
+            },
+            "metadata": {
+                "type": "string"
+            },
+            "overrides": {
+                "type": "string"
+            },
+            "ruleset": {
+                "enum": [
+                    "1.x",
+                    "PR1003",
+                    "I1195",
+                    "forbidden"
+                ]
+            },
+            "warnaserr": {
+                "type": "flag"
+            }
+        },
+        "required": [
+            "bids_dir"
+        ],
+        "title": "ipfreely.invocationSchema",
+        "type": "object"
+    },
+    "name": "BIDS IP-Freely",
+    "output-files": [
+        {
+            "description": "Save the full data-metadata filesystem association graph to a JSON file.",
+            "id": "graph",
+            "name": "Graph",
+            "optional": true,
+            "path-template": "OUTPUT_JSON"
+        },
+        {
+            "description": "Save the aggregate metadata associated with all data files to a JSON file.",
+            "id": "metadata",
+            "name": "Metadata",
+            "optional": true,
+            "path-template": "OUTPUT_JSON"
+        },
+        {
+            "description": "Save information about presence of key-value metadata field overrides to a JSON file.",
+            "id": "overrides",
+            "name": "Overrides",
+            "optional": true,
+            "path-template": "OUTPUT_JSON"
+        }
+    ],
+    "schema-version": "0.5",
+    "tags": {
+        "domain": [
+            "neuroinformatics"
+        ]
+    },
+    "tool-version": "dev"
+}

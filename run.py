@@ -1,89 +1,141 @@
 #!/usr/bin/env python3
+
 import argparse
+import json
 import os
-import subprocess
-import nibabel
-import numpy
-from glob import glob
-
-__version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                'version')).read()
-
-def run(command, env={}):
-    merged_env = os.environ
-    merged_env.update(env)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, shell=True,
-                               env=merged_env)
-    while True:
-        line = process.stdout.readline()
-        line = str(line, 'utf-8')[:-1]
-        print(line)
-        if line == '' and process.poll() != None:
-            break
-    if process.returncode != 0:
-        raise Exception("Non zero return code: %d"%process.returncode)
-
-parser = argparse.ArgumentParser(description='Example BIDS App entrypoint script.')
-parser.add_argument('bids_dir', help='The directory with the input dataset '
-                    'formatted according to the BIDS standard.')
-parser.add_argument('output_dir', help='The directory where the output files '
-                    'should be stored. If you are running group level analysis '
-                    'this folder should be prepopulated with the results of the'
-                    'participant level analysis.')
-parser.add_argument('analysis_level', help='Level of the analysis that will be performed. '
-                    'Multiple participant level analyses can be run independently '
-                    '(in parallel) using the same output_dir.',
-                    choices=['participant', 'group'])
-parser.add_argument('--participant_label', help='The label(s) of the participant(s) that should be analyzed. The label '
-                   'corresponds to sub-<participant_label> from the BIDS spec '
-                   '(so it does not include "sub-"). If this parameter is not '
-                   'provided all subjects should be analyzed. Multiple '
-                   'participants can be specified with a space separated list.',
-                   nargs="+")
-parser.add_argument('--skip_bids_validator', help='Whether or not to perform BIDS dataset validation',
-                   action='store_true')
-parser.add_argument(
-    '-v',
-    '--version',
-    action='version',
-    version=f'BIDS-App example version {__version__}',
-)
+import pathlib
+import sys
+from ipfreely.evaluate import evaluate
+from ipfreely.filepath import BIDSError
+from ipfreely.graph import Graph
+from ipfreely.returncodes import ReturnCodes
+from ipfreely.ruleset import RULESETS
+from ipfreely.utils.metadata import all_metadata
 
 
-args = parser.parse_args()
+__version__ = open(
+    os.path.join(os.path.dirname(os.path.realpath(__file__)), "version"),
+    encoding="locale",
+).read()  # pylint: disable=consider-using-with
 
-if not args.skip_bids_validator:
-    run(f'bids-validator {args.bids_dir}')
 
-subjects_to_analyze = []
-# only for a subset of subjects
-if args.participant_label:
-    subjects_to_analyze = args.participant_label
-# for all subjects
-else:
-    subject_dirs = glob(os.path.join(args.bids_dir, "sub-*"))
-    subjects_to_analyze = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
+def main():
 
-# running participant level
-if args.analysis_level == "participant":
+    parser = argparse.ArgumentParser(
+        description="IP-Freely: BIDS Inheritance Principle tooling"
+    )
+    parser.add_argument(
+        "bids_dir",
+        help="A directory containing a dataset "
+        "formatted according to the BIDS standard.",
+    )
+    parser.add_argument(
+        "-g",
+        "--graph",
+        help="Save the full data-metadata filesystem association graph"
+        " to a JSON file.",
+    )
+    parser.add_argument(
+        "-m",
+        "--metadata",
+        help="Save the aggregate metadata associated with all data files"
+        " to a JSON file.",
+    )
+    parser.add_argument(
+        "-o",
+        "--overrides",
+        help="Save information about presence of key-value metadata field overrides"
+        " to a JSON file.",
+    )
+    parser.add_argument(
+        "-r",
+        "--ruleset",
+        help="Analyse the dataset under a specific IP ruleset.",
+        choices=RULESETS.keys(),
+    )
+    parser.add_argument(
+        "-w",
+        "--warnings-as-errors",
+        action="store_true",
+        help="Treat warnings as errors by yielding a non-zero return code.",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"IP-Freely version {__version__}",
+    )
 
-    # find all T1s and skullstrip them
-    for subject_label in subjects_to_analyze:
-        for T1_file in (glob(os.path.join(args.bids_dir, f"sub-{subject_label}", "anat", "*_T1w.nii*"))
-                        + glob(os.path.join(args.bids_dir, f"sub-{subject_label}", "ses-*", "anat", "*_T1w.nii*"))):
-            out_file = os.path.split(T1_file)[-1].replace("_T1w.", "_brain.")
-            cmd = f"bet {T1_file} {os.path.join(args.output_dir, out_file)}"
-            print(cmd)
-            run(cmd)
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError as e:
+        sys.stderr.write(f"{e}\n")
+        sys.exit()
 
-elif args.analysis_level == "group":
-    brain_sizes = []
-    for subject_label in subjects_to_analyze:
-        for brain_file in glob(os.path.join(args.output_dir, f"sub-{subject_label}*.nii*")):
-            data = nibabel.load(brain_file).get_fdata()
-            # calcualte average mask size in voxels
-            brain_sizes.append((data != 0).sum())
+    sys.stderr.write(f"args.metadata: {args.metadata}\n")
 
-    with open(os.path.join(args.output_dir, "avg_brain_size.txt"), 'w') as fp:
-        fp.write("Average brain size is %g voxels"%numpy.array(brain_sizes).mean())
+    bids_dir = pathlib.Path(args.bids_dir)
+    if not bids_dir.is_dir():
+        sys.stderr.write(f"Input BIDS directory {args.bids_dir} not found")
+        sys.exit(ReturnCodes.NO_DATASET)
+
+    if args.ruleset:
+        ruleset = RULESETS[args.ruleset]
+    else:
+        dataset_description_path = bids_dir / "dataset_description.json"
+        try:
+            with open(dataset_description_path, "r") as f:
+                bids_version_string = json.load(f)["BIDSVersion"]
+        except FileNotFoundError:
+            sys.stderr.write(
+                f'No "dataset_desciption.json" found for BIDS dataset {bids_dir}'
+                " and no ruleset requested at command-line;"
+                " do not know what ruleset to apply"
+            )
+            sys.exit(ReturnCodes.NO_RULESET)
+        except KeyError:
+            sys.stderr.write(
+                'No "BIDSVersion" key in file dataset_description.json'
+                f" for BIDS dataset {bids_dir};"
+                " and no ruleset requested at command-line;"
+                " do not know what ruleset to apply"
+            )
+            sys.exit(ReturnCodes.NO_RULESET)
+        if bids_version_string.startswith("1."):
+            ruleset = RULESETS["1.x"]
+        elif bids_version_string == "Pull Request 1003":
+            ruleset = RULESETS["PR1003"]
+        else:
+            sys.stderr.write(
+                "Unable to determine appropriate ruleset"
+                f' based on BIDSVersion string "{bids_version_string}"'
+                f" for BIDS dataset {bids_dir}"
+            )
+            sys.exit(ReturnCodes.NO_RULESET)
+
+    evaluate_kwargs = {}
+    if args.overrides is not None:
+        evaluate_kwargs["export_overrides"] = args.overrides
+    if args.warnings_as_errors is not None:
+        evaluate_kwargs["warnings_as_errors"] = args.warnings_as_errors
+
+    try:
+        graph: Graph = Graph(bids_dir, ruleset)
+        return_code: ReturnCodes = evaluate(bids_dir, ruleset, graph, **evaluate_kwargs)
+    except BIDSError as e:
+        sys.stderr.write(f"Error parsing BIDS dataset: {e}\n")
+        sys.exit(ReturnCodes.MALFORMED_DATASET)
+
+    if args.graph is not None:
+        graph.save(args.graph)
+
+    if args.metadata is not None:
+        data = all_metadata(bids_dir, graph)
+        with open(args.metadata, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+
+    return return_code
+
+
+if __name__ == "__main__":
+    main()

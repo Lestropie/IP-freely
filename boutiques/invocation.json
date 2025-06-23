@@ -1,6 +1,3 @@
 {
-    "bids_dir" : "ds001",
-    "output_dir_name" : "example-output",
-    "analysis_level": "participant",
-    "participant_label": ["01"]
+    "bids_dir" : "ip112e1good"
 }
