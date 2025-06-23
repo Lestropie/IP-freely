@@ -115,3 +115,12 @@ class BIDSFilePath:
 
     def __format__(self, format_spec) -> str:
         return self.relpath.__format__(format_spec)
+
+def sort(files: list[BIDSFilePath]) -> list[BIDSFilePath]:
+    def first(one: BIDSFilePath, two: BIDSFilePath) -> bool:
+        if two.filepath.parent.is_relative_to(one.filepath.parent):
+            return True
+        if one.filepath.parent.is_relative_to(two.filepath.parent):
+            return False
+        return len(one.entities) < len(two.entities)
+    return sorted(files, key=first)

@@ -2,12 +2,12 @@ import pathlib
 import sys
 from .filepath import BIDSFilePath
 from .graph import Graph
-from .overrides import get_json_overrides
-from .overrides import save_json_overrides
 from .returncodes import ReturnCodes
 from .ruleset import MetaPathCheck
 from .ruleset import Ruleset
 from .utils.applicability import is_applicable_nameonly
+from .utils.keyvalues import find_overrides
+from .utils.keyvalues import save_overrides
 from .utils.sidecar import is_sidecar_pair
 
 
@@ -177,17 +177,17 @@ def evaluate(
         sys.stderr.write("]\n")
         return_code = ReturnCodes.IP_VIOLATION
 
-    json_overrides = get_json_overrides(bids_dir, graph)
-    if json_overrides:
+    keyval_overrides = find_overrides(bids_dir, graph)
+    if keyval_overrides:
         sys.stderr.write(
-            f"{len(json_overrides)} data"
-            f" {'files have' if len(json_overrides) > 1 else 'file has'}"
+            f"{len(keyval_overrides)} data"
+            f" {'files have' if len(keyval_overrides) > 1 else 'file has'}"
             " overridden JSON metadata fields according to Inheritance Principle:"
-            f' [{"; ".join(map(str, json_overrides.keys()))}]\n'
+            f' [{"; ".join(map(str, keyval_overrides.keys()))}]\n'
         )
         any_warning = True
     if export_overrides_path is not None:
-        save_json_overrides(export_overrides_path, json_overrides)
+        save_overrides(export_overrides_path, keyval_overrides)
 
     if not any_inheritance:
         sys.stderr.write("No manifestations of Inheritance Principle found\n")

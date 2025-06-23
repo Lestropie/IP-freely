@@ -10,7 +10,7 @@ from ipfreely.filepath import BIDSError
 from ipfreely.graph import Graph
 from ipfreely.returncodes import ReturnCodes
 from ipfreely.ruleset import RULESETS
-from ipfreely.utils.metadata import all_metadata
+from ipfreely.utils.keyvalues import load_all
 
 
 __version__ = open(
@@ -134,7 +134,7 @@ def main():
         graph.save(args.graph)
 
     if args.metadata is not None:
-        data = all_metadata(bids_dir, graph)
+        data = load_all(bids_dir, graph)
         with open(args.metadata, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
 
