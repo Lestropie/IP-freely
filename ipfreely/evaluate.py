@@ -5,7 +5,9 @@ from .graph import Graph
 from .overrides import get_json_overrides
 from .overrides import save_json_overrides
 from .returncodes import ReturnCodes
+from .ruleset import MetaPathCheck
 from .ruleset import Ruleset
+from .utils.applicability import is_applicable_nameonly
 from .utils.sidecar import is_sidecar_pair
 
 
@@ -94,6 +96,7 @@ def evaluate(
 
     non_sidecar_exclusive_pairs: list[tuple[BIDSFilePath, BIDSFilePath]] = []
     inapplicable_metafiles: list[BIDSFilePath] = []
+    bad_metadata_path: dict[BIDSFilePath, list[BIDSFilePath]] = {}
     for metapath, datapaths in graph.d4m.items():
         if datapaths is not None:
             if not datapaths:
@@ -104,6 +107,36 @@ def evaluate(
                 and not is_sidecar_pair(metapath, datapaths[0])
             ):
                 non_sidecar_exclusive_pairs.append((datapaths[0], metapath))
+        # 1.1.2 has a different description to 1.7.0:
+        #   Subject-specific files can't be at dataset root,
+        #   and subject-agnostic files can't be lower than root
+        if ruleset.meta_path_check == MetaPathCheck.ver112:
+            if metapath.entities[0].key == "sub":
+                if len(metapath.relpath.parents) == 1:
+                    bad_metadata_path[metapath] = []
+            elif len(metapath.relpath.parents) != 1:
+                bad_metadata_path[metapath] = []
+        elif ruleset.meta_path_check == MetaPathCheck.ver170:
+            # Find any data files to which this metadata file would be applicable
+            #   based on file name alone,
+            #   but it isn't because it's not in a parent of the data file
+            # Unfortunately this is quadratic complexity...
+            for datapath in graph.m4d:
+                if datapath in datapaths:
+                    continue
+                # If the metadata path is in a parent directory of the data file,
+                #   then we can assume that it was previously checked for applicability,
+                #   so the fact that that data file isn't present in "datapaths"
+                #   for this metadata file means we don't need to check further
+                if metapath.relpath.parent in datapath.relpath.parents:
+                    continue
+                if is_applicable_nameonly(datapath, metapath):
+                    if metapath in bad_metadata_path:
+                        bad_metadata_path[metapath].append(datapath)
+                    else:
+                        bad_metadata_path[metapath] = [datapath]
+        else:
+            assert False
     if non_sidecar_exclusive_pairs:
         sys.stderr.write(
             f"{len(non_sidecar_exclusive_pairs)} exclusive"
@@ -131,6 +164,18 @@ def evaluate(
             any_warning = True
         else:
             return_code = ReturnCodes.IP_VIOLATION
+    if bad_metadata_path:
+        sys.stderr.write(
+            f"{len(bad_metadata_path)} metadata"
+            f" {'file' if len(bad_metadata_path) == 1 else 'files'}"
+            " found to match data files in name but not in path: ["
+        )
+        for metapath, datapaths in bad_metadata_path.items():
+            sys.stderr.write(f"\n  {metapath}"
+                             f"({len(datapaths)} data"
+                             f"{'file' if len(datapaths) == 1 else 'files'})")
+        sys.stderr.write("]\n")
+        return_code = ReturnCodes.IP_VIOLATION
 
     json_overrides = get_json_overrides(bids_dir, graph)
     if json_overrides:

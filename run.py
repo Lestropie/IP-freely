@@ -72,8 +72,6 @@ def main():
         sys.stderr.write(f"{e}\n")
         sys.exit()
 
-    sys.stderr.write(f"args.metadata: {args.metadata}\n")
-
     bids_dir = pathlib.Path(args.bids_dir)
     if not bids_dir.is_dir():
         sys.stderr.write(f"Input BIDS directory {args.bids_dir} not found")
@@ -101,17 +99,23 @@ def main():
                 " do not know what ruleset to apply"
             )
             sys.exit(ReturnCodes.NO_RULESET)
-        if bids_version_string.startswith("1."):
-            ruleset = RULESETS["1.x"]
-        elif bids_version_string == "Pull Request 1003":
+        if bids_version_string == "Pull Request 1003":
             ruleset = RULESETS["PR1003"]
+        elif bids_version_string == "Issue 1195":
+            ruleset = RULESETS["I1195"]
         else:
-            sys.stderr.write(
-                "Unable to determine appropriate ruleset"
-                f' based on BIDSVersion string "{bids_version_string}"'
-                f" for BIDS dataset {bids_dir}"
-            )
-            sys.exit(ReturnCodes.NO_RULESET)
+            try:
+                bids_version = tuple(int(i) for i in bids_version_string.aplit("."))
+            except TypeError:
+                sys.stderr.write(
+                    "Unable to determine appropriate ruleset"
+                    f' based on BIDSVersion string "{bids_version_string}"'
+                    f" for BIDS dataset {bids_dir}"
+                )
+                sys.exit(ReturnCodes.NO_RULESET)
+            ruleset = RULESETS["1.1.x"] \
+                    if bids_version < (1, 7) \
+                    else RULESETS["1.7.x"]
 
     evaluate_kwargs = {}
     if args.overrides is not None:

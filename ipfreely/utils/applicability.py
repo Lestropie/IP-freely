@@ -5,11 +5,19 @@ from ..filepath import BIDSFilePath
 #   could potentially be applicable to a data file
 #   but based exclusively on filename, not filesystem location
 def is_applicable_nameonly(datafile: BIDSFilePath, metafile: BIDSFilePath) -> bool:
-    if len(datafile.relpath.parents) != 1 or len(metafile.relpath.parents) != 1:
-        raise TypeError(
-            "Inputs to utils.is_applicable_filename()"
-            "must be pure file names only; no parent directory"
-        )
+    # While this would be a nice requirement to impose,
+    #   getting the data into this form is likely requiring unnecessary computation
+    #if len(datafile.relpath.parents) != 1 or len(metafile.relpath.parents) != 1:
+    #    raise TypeError(
+    #        "Inputs to utils.is_applicable_filename()"
+    #        "must be pure file names only; no parent directory"
+    #    )
+    # If the metadata file has a suffix,
+    #   it must match the data file
+    # (there are some proposed rule sets where maybe metadata files
+    #   don't need to have a suffix)
+    if metafile.suffix is not None and metafile.suffix != datafile.suffix:
+        return False
     # If there's any entities in the metafile that are either absent from the data file,
     #   or that have a different value for that entity than the data file,
     #   then the metadata file is not applicable
@@ -30,13 +38,4 @@ def is_applicable_nameonly(datafile: BIDSFilePath, metafile: BIDSFilePath) -> bo
 def is_applicable(datafile: BIDSFilePath, metafile: BIDSFilePath) -> bool:
     if not metafile.relpath.parent in datafile.relpath.parents:
         return False
-    # If the metadata file has a suffix,
-    #   it must match the data file
-    # (there are some proposed rule sets where maybe metadata files
-    #   don't need to have a suffix)
-    if metafile.suffix is not None and metafile.suffix != datafile.suffix:
-        return False
-    return is_applicable_nameonly(
-        BIDSFilePath(datafile.relpath.parent, datafile.relpath),
-        BIDSFilePath(metafile.relpath.parent, metafile.relpath),
-    )
+    return is_applicable_nameonly(datafile, metafile)

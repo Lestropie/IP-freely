@@ -17,6 +17,9 @@ from enum import Enum
 
 InheritanceWithinDir = Enum("InheritanceWithinDir", "unique ordered any")
 
+MetaPathCheck = Enum("MetaPathCheck", "ver112 ver170")
+
+
 
 @dataclass
 class Ruleset:
@@ -28,12 +31,14 @@ class Ruleset:
     permit_multiple_metadata_per_data: bool
     permit_multiple_data_per_metadata: bool
     permit_nonsidecar: bool
+    meta_path_check: MetaPathCheck
 
 
 RULESETS = {
-    # Current BIDS 1.x Inheritance Principle:
-    "1.x": Ruleset(
-        "1.x",
+
+    # BIDS Inheritance Principle from 1.1.2 until 1.6.x:
+    "1.1.x": Ruleset(
+        "1.1.x",
         # Suffix must be present in all files, including metadata files
         True,
         # Data file can't have more than one applicable JSON in a single directory
@@ -50,6 +55,28 @@ RULESETS = {
         True,
         # Metadata files don't strictly have to be sidecars
         True,
+        # Checking whether relative paths of metadata files are valid
+        #   is based solely on:
+        # - Is it *subject-speific*, ie. has "sub-",
+        #   but is not in a subject-specific directory?
+        # - Is it *not* subject-specific, ie. *doesn't* have "sub-",
+        #   but is anywhere other than the root of the BIDS dataset?
+        MetaPathCheck.ver112
+    ),
+    # BIDS Inheritance Principle from 1.7.0 onwards:
+    "1.7.x": Ruleset(
+        "1.7.x",
+        # All are identical to 1.1.x ...
+        True,
+        InheritanceWithinDir.unique,
+        InheritanceWithinDir.unique,
+        True,
+        True,
+        True,
+        True,
+        # ... except for the check on illegitimate metadata file
+        #   location within the filesystem hierarchy
+        MetaPathCheck.ver170
     ),
     # What was proposed in bids-standard PR #1003:
     "PR1003": Ruleset(
@@ -69,6 +96,8 @@ RULESETS = {
         True,
         # Still possible for metadata files to not be sidecars
         True,
+        # No proposed change to metadata file path location check
+        MetaPathCheck.ver170
     ),
     # What was discussed in BIDS specification repository Issue #1195
     # What was implemented in Lestropie/bids-specification#5
@@ -96,6 +125,8 @@ RULESETS = {
         True,
         # Still possible for metadata files to not be sidecars
         True,
+        # No proposed change to metadata file path location check
+        MetaPathCheck.ver170
     ),
     # Precluding any and all use of Inheritance Principle, expressed as a ruleset
     # This permits use of the software tool to detect any presence of any aspect
@@ -124,5 +155,10 @@ RULESETS = {
         #   would be problematic usage within such a ruleset,
         #   so more likely such a ruleset would explicitly require this
         False,
+        # Choice here should be irrelevant
+        #   (not possible for a dataset to violate just this criterion exclusively
+        #   given the other restrictions in the ruleset);
+        #   1.1.2 rule is chosen just because it is computationally cheaper
+        MetaPathCheck.ver112
     ),
 }

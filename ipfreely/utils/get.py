@@ -91,7 +91,7 @@ def metafiles_for_datafile(
                             f"Multiple applicable {filepath.extension} metadata files"
                             " within a single filesystem level"
                             f" for data file {datafile}"
-                            f" forbidden in ruleset {ruleset.name}"
+                            f" forbidden in ruleset \"{ruleset.name}\""
                         )
                 elif (
                     ruleset.json_inheritance_within_dir == InheritanceWithinDir.ordered
@@ -109,7 +109,7 @@ def metafiles_for_datafile(
                             " with an identical number of entities"
                             " within a single filesystem level"
                             f" for data file {datafile}"
-                            f" forbidden in ruleset {ruleset.name}"
+                            f" forbidden in ruleset \"{ruleset.name}\""
                         )
                 elif ruleset.json_inheritance_within_dir == InheritanceWithinDir.any:
                     pass
@@ -168,7 +168,7 @@ def metafiles_for_datafile(
                     f" applicable to data file {datafile}"
                     " due to presence of multiple applicable metadata files"
                     " at one filesystem level with an equal number of entities"
-                    f" forbidden in ruleset {ruleset.name}"
+                    f" forbidden in ruleset \"{ruleset.name}\""
                 )
             nearest_matches[extension] = nearest[0]
     # For extensions where only the nearest applicable metadata file is used,

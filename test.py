@@ -37,97 +37,134 @@ class Test:
 
 TESTS = [
     # ip112e1bad
-    Test("ip112e1bad", "1.x", TestOutcome.violation),
+    Test("ip112e1bad", "1.1.x", TestOutcome.violation),
+    Test("ip112e1bad", "1.7.x", TestOutcome.violation),
     Test("ip112e1bad", "PR1003", TestOutcome.success),
     Test("ip112e1bad", "I1195", TestOutcome.success),
     Test("ip112e1bad", "forbidden", TestOutcome.violation),
     # ip112e1good
-    Test("ip112e1good", "1.x", TestOutcome.success),
+    Test("ip112e1good", "1.1.x", TestOutcome.success),
+    Test("ip112e1good", "1.7.x", TestOutcome.success),
     Test("ip112e1good", "PR1003", TestOutcome.success),
     Test("ip112e1good", "I1195", TestOutcome.success),
     Test("ip112e1good", "forbidden", TestOutcome.violation),
     # ip112e2v1
-    Test("ip112e2v1", "1.x", TestOutcome.success),
+    Test("ip112e2v1", "1.1.x", TestOutcome.success),
+    Test("ip112e2v1", "1.7.x", TestOutcome.success),
     Test("ip112e2v1", "PR1003", TestOutcome.success),
     Test("ip112e2v1", "I1195", TestOutcome.success),
     Test("ip112e2v1", "forbidden", TestOutcome.violation),
     # ip112e2v2
-    Test("ip112e2v2", "1.x", TestOutcome.success),
+    Test("ip112e2v2", "1.1.x", TestOutcome.success),
+    Test("ip112e2v2", "1.7.x", TestOutcome.success),
     Test("ip112e2v2", "PR1003", TestOutcome.success),
     Test("ip112e2v2", "I1195", TestOutcome.success),
     Test("ip112e2v2", "forbidden", TestOutcome.violation),
     # ip112e3v1
-    Test("ip112e3v1", "1.x", TestOutcome.success),
+    Test("ip112e3v1", "1.1.x", TestOutcome.success),
+    Test("ip112e3v1", "1.7.x", TestOutcome.success),
     Test("ip112e3v1", "PR1003", TestOutcome.success),
     Test("ip112e3v1", "I1195", TestOutcome.success),
     Test("ip112e3v1", "forbidden", TestOutcome.violation),
     # ip112e3v2
-    Test("ip112e3v2", "1.x", TestOutcome.warning),
+    Test("ip112e3v2", "1.1.x", TestOutcome.warning),
+    Test("ip112e3v2", "1.7.x", TestOutcome.warning),
     Test("ip112e3v2", "PR1003", TestOutcome.warning),
     Test("ip112e3v2", "I1195", TestOutcome.warning),
     Test("ip112e3v2", "forbidden", TestOutcome.violation),
+    # ip112badmetapathe1
+    Test("ip112badmetapathe1", "1.1.x", TestOutcome.violation),
+    Test("ip112badmetapathe1", "1.7.x", TestOutcome.success),
+    Test("ip112badmetapathe1", "PR1003", TestOutcome.success),
+    Test("ip112badmetapathe1", "I1195", TestOutcome.success),
+    Test("ip112badmetapathe1", "forbidden", TestOutcome.violation),
+    # ip112badmetapathe2v1
+    Test("ip112badmetapathe2v1", "1.1.x", TestOutcome.violation),
+    Test("ip112badmetapathe2v1", "1.7.x", TestOutcome.violation),
+    Test("ip112badmetapathe2v1", "PR1003", TestOutcome.violation),
+    Test("ip112badmetapathe2v1", "I1195", TestOutcome.violation),
+    Test("ip112badmetapathe2v1", "forbidden", TestOutcome.violation),
+    # ip112badmetapathe2v2
+    Test("ip112badmetapathe2v2", "1.1.x", TestOutcome.violation),
+    Test("ip112badmetapathe2v2", "1.7.x", TestOutcome.success),
+    Test("ip112badmetapathe2v2", "PR1003", TestOutcome.success),
+    Test("ip112badmetapathe2v2", "I1195", TestOutcome.success),
+    Test("ip112badmetapathe2v2", "forbidden", TestOutcome.violation),
     # ip170e1
-    Test("ip170e1", "1.x", TestOutcome.warning),
+    Test("ip170e1", "1.1.x", TestOutcome.warning),
+    Test("ip170e1", "1.7.x", TestOutcome.warning),
     Test("ip170e1", "PR1003", TestOutcome.warning),
     Test("ip170e1", "I1195", TestOutcome.warning),
     Test("ip170e1", "forbidden", TestOutcome.violation),
     # ip170e2
-    Test("ip170e2", "1.x", TestOutcome.violation),
+    Test("ip170e2", "1.1.x", TestOutcome.violation),
+    Test("ip170e2", "1.7.x", TestOutcome.violation),
     Test("ip170e2", "PR1003", TestOutcome.success),
     Test("ip170e2", "I1195", TestOutcome.success),
     Test("ip170e2", "forbidden", TestOutcome.violation),
     # ip170e3
-    Test("ip170e3", "1.x", TestOutcome.success),
+    Test("ip170e3", "1.1.x", TestOutcome.success),
+    Test("ip170e3", "1.7.x", TestOutcome.success),
     Test("ip170e3", "PR1003", TestOutcome.success),
     Test("ip170e3", "I1195", TestOutcome.success),
     Test("ip170e3", "forbidden", TestOutcome.violation),
     # ip170e4
-    Test("ip170e4", "1.x", TestOutcome.success),
+    Test("ip170e4", "1.1.x", TestOutcome.success),
+    Test("ip170e4", "1.7.x", TestOutcome.success),
     Test("ip170e4", "PR1003", TestOutcome.success),
     Test("ip170e4", "I1195", TestOutcome.success),
     Test("ip170e4", "forbidden", TestOutcome.violation),
     # ipabsent
-    Test("ipabsent", "1.x", TestOutcome.success),
+    Test("ipabsent", "1.1.x", TestOutcome.success),
+    Test("ipabsent", "1.7.x", TestOutcome.success),
     Test("ipabsent", "PR1003", TestOutcome.success),
     Test("ipabsent", "I1195", TestOutcome.success),
     Test("ipabsent", "forbidden", TestOutcome.success),
+    # ip170badrelpath
+    Test("ip170badrelpath", "1.1.x", TestOutcome.success),
+    Test("ip170badrelpath", "1.7.x", TestOutcome.violation),
+    Test("ip170badrelpath", "PR1003", TestOutcome.violation),
+    Test("ip170badrelpath", "I1195", TestOutcome.violation),
+    Test("ip170badrelpath", "forbidden", TestOutcome.violation),
     # ipexclnonsc
-    Test("ipexclnonsc", "1.x", TestOutcome.warning),
+    Test("ipexclnonsc", "1.1.x", TestOutcome.warning),
+    Test("ipexclnonsc", "1.7.x", TestOutcome.warning),
     Test("ipexclnonsc", "PR1003", TestOutcome.warning),
     Test("ipexclnonsc", "I1195", TestOutcome.warning),
-    Test(
-        "ipexclnonsc", "forbidden", TestOutcome.violation
-    ),  # TESTME Current logic may fail to pick this up
+    Test("ipexclnonsc", "forbidden", TestOutcome.violation),
     # ipi1195e1
-    Test("ipi1195e1", "1.x", TestOutcome.violation),
+    Test("ipi1195e1", "1.1.x", TestOutcome.violation),
+    Test("ipi1195e1", "1.7.x", TestOutcome.violation),
     Test("ipi1195e1", "PR1003", TestOutcome.violation),
     Test("ipi1195e1", "I1195", TestOutcome.success),
     Test("ipi1195e1", "forbidden", TestOutcome.violation),
     # iploosemeta
-    # TODO Not yet implemented detection?
-    Test("iploosemeta", "1.x", TestOutcome.warning),
+    Test("iploosemeta", "1.1.x", TestOutcome.warning),
+    Test("iploosemeta", "1.7.x", TestOutcome.warning),
     Test("iploosemeta", "PR1003", TestOutcome.warning),
     Test("iploosemeta", "I1195", TestOutcome.warning),
-    Test(
-        "iploosemeta", "forbidden", TestOutcome.violation
-    ),  # TESTME Current logic might not pick this up
+    Test("iploosemeta", "forbidden", TestOutcome.violation),
     # ippr1003ae1
-    Test("ippr1003ae1", "1.x", TestOutcome.violation),
+    Test("ippr1003ae1", "1.1.x", TestOutcome.violation),
+    Test("ippr1003ae1", "1.7.x", TestOutcome.violation),
     Test("ippr1003ae1", "PR1003", TestOutcome.success),
     Test("ippr1003ae1", "I1195", TestOutcome.success),
     Test("ippr1003ae1", "forbidden", TestOutcome.violation),
     # ippr1003ae2
-    Test("ippr1003ae2", "1.x", TestOutcome.violation),
+    Test("ippr1003ae2", "1.1.x", TestOutcome.violation),
+    Test("ippr1003ae2", "1.7.x", TestOutcome.violation),
     Test("ippr1003ae2", "PR1003", TestOutcome.violation),
     Test("ippr1003ae2", "I1195", TestOutcome.success),
     Test("ippr1003ae2", "forbidden", TestOutcome.violation),
     # ippr1003e1v1
-    Test("ippr1003e1v1", "1.x", TestOutcome.success),
+    Test("ippr1003e1v1", "1.1.x", TestOutcome.success),
+    Test("ippr1003e1v1", "1.7.x", TestOutcome.success),
     Test("ippr1003e1v1", "PR1003", TestOutcome.success),
     Test("ippr1003e1v1", "I1195", TestOutcome.success),
     Test("ippr1003e1v1", "forbidden", TestOutcome.violation),
     # ippr1003e1v2
-    Test("ippr1003e1v2", "1.x", TestOutcome.violation),
+    Test("ippr1003e1v2", "1.1.x", TestOutcome.violation),
+    Test("ippr1003e1v2", "1.7.x", TestOutcome.violation),
     Test("ippr1003e1v2", "PR1003", TestOutcome.success),
     Test("ippr1003e1v2", "I1195", TestOutcome.success),
     Test("ippr1003e1v2", "forbidden", TestOutcome.violation),
