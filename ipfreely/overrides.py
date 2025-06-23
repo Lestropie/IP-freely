@@ -40,4 +40,4 @@ def save_json_overrides(
     for datapath, clashes in data.items():
         json_data[str(datapath)] = sorted(clashes)
     with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(json_data, f, sort_keys=True)
+        json.dump(json_data, f, sort_keys=True, indent=4)

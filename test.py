@@ -8,6 +8,7 @@ import sys
 from ipfreely import BIDSError
 from ipfreely.evaluate import evaluate
 from ipfreely.graph import Graph
+from ipfreely.overrides import get_json_overrides
 from ipfreely.returncodes import ReturnCodes
 from ipfreely.ruleset import Ruleset
 from ipfreely.ruleset import RULESETS
@@ -176,7 +177,20 @@ def run_test(bids_dir: pathlib.Path, ruleset: Ruleset) -> TestOutcome:
         data = all_metadata(bids_dir, graph)
         if data != ref_metadata:
             return TestOutcome.failure
-
+    overrides_path = bids_dir / "sourcedata" / "ip_overrides.json"
+    if overrides_path.is_file():
+        try:
+            with open(overrides_path, "r", encoding="utf-8") as f:
+                ref_overrides = json.load(f)
+        except json.JSONDecodeError:
+            sys.stderr.write(
+                f'Error reading reference overrides JSON "{overrides_path}"\n'
+            )
+            raise
+        data = get_json_overrides(bids_dir, graph)
+        data = {str(datapath): list(keys) for datapath, keys in data.items()}
+        if data != ref_overrides:
+            return TestOutcome.failure
     return outcome
 
 
