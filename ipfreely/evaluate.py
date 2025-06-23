@@ -171,9 +171,11 @@ def evaluate(
             " found to match data files in name but not in path: ["
         )
         for metapath, datapaths in bad_metadata_path.items():
-            sys.stderr.write(f"\n  {metapath}"
-                             f"({len(datapaths)} data"
-                             f"{'file' if len(datapaths) == 1 else 'files'})")
+            sys.stderr.write(
+                f"\n  {metapath}"
+                f"({len(datapaths)} data"
+                f"{'file' if len(datapaths) == 1 else 'files'})"
+            )
         sys.stderr.write("]\n")
         return_code = ReturnCodes.IP_VIOLATION
 

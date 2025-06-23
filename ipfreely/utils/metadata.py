@@ -29,8 +29,7 @@ def load_metadata(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
     return result
 
 
-def load_tsv(bids_dir: pathlib.Path,
-             metapath: BIDSFilePath) -> list:
+def load_tsv(bids_dir: pathlib.Path, metapath: BIDSFilePath) -> list:
     result = []
     with open(bids_dir / metapath, "r", encoding="utf-8") as f:
         rd = csv.reader(f, delimiter="\t")

@@ -73,10 +73,14 @@ def metafiles_for_datafile(
                         f" for data file {datafile}"
                     )
             elif (
-                EXTENSIONS[filepath.extension].inheritance_behaviour == InheritanceBehaviour.nearest
+                EXTENSIONS[filepath.extension].inheritance_behaviour
+                == InheritanceBehaviour.nearest
             ):
                 pass
-            elif EXTENSIONS[filepath.extension].inheritance_behaviour == InheritanceBehaviour.merge:
+            elif (
+                EXTENSIONS[filepath.extension].inheritance_behaviour
+                == InheritanceBehaviour.merge
+            ):
 
                 # While .behaviour == merge and .extension == 'json'
                 #   are technically not one and the same,
@@ -91,7 +95,7 @@ def metafiles_for_datafile(
                             f"Multiple applicable {filepath.extension} metadata files"
                             " within a single filesystem level"
                             f" for data file {datafile}"
-                            f" forbidden in ruleset \"{ruleset.name}\""
+                            f' forbidden in ruleset "{ruleset.name}"'
                         )
                 elif (
                     ruleset.json_inheritance_within_dir == InheritanceWithinDir.ordered
@@ -109,7 +113,7 @@ def metafiles_for_datafile(
                             " with an identical number of entities"
                             " within a single filesystem level"
                             f" for data file {datafile}"
-                            f" forbidden in ruleset \"{ruleset.name}\""
+                            f' forbidden in ruleset "{ruleset.name}"'
                         )
                 elif ruleset.json_inheritance_within_dir == InheritanceWithinDir.any:
                     pass
@@ -136,7 +140,8 @@ def metafiles_for_datafile(
             #   of any lower parent directories
             if (
                 extension not in all_matches
-                or EXTENSIONS[extension].inheritance_behaviour == InheritanceBehaviour.nearest
+                or EXTENSIONS[extension].inheritance_behaviour
+                == InheritanceBehaviour.nearest
             ):
                 all_matches[extension] = sorted(filepaths)
             else:
@@ -168,7 +173,7 @@ def metafiles_for_datafile(
                     f" applicable to data file {datafile}"
                     " due to presence of multiple applicable metadata files"
                     " at one filesystem level with an equal number of entities"
-                    f" forbidden in ruleset \"{ruleset.name}\""
+                    f' forbidden in ruleset "{ruleset.name}"'
                 )
             nearest_matches[extension] = nearest[0]
     # For extensions where only the nearest applicable metadata file is used,
@@ -217,7 +222,10 @@ def datafiles_for_metafile(
             initial_result.append(datafile)
 
     # Perform further pruning of set of data files if necessary
-    if EXTENSIONS[metafile.extension].inheritance_behaviour == InheritanceBehaviour.merge:
+    if (
+        EXTENSIONS[metafile.extension].inheritance_behaviour
+        == InheritanceBehaviour.merge
+    ):
         return initial_result
     result: list[BIDSFilePath] = []
     for candidate in initial_result:

@@ -7,7 +7,7 @@ from ..filepath import BIDSFilePath
 def is_applicable_nameonly(datafile: BIDSFilePath, metafile: BIDSFilePath) -> bool:
     # While this would be a nice requirement to impose,
     #   getting the data into this form is likely requiring unnecessary computation
-    #if len(datafile.relpath.parents) != 1 or len(metafile.relpath.parents) != 1:
+    # if len(datafile.relpath.parents) != 1 or len(metafile.relpath.parents) != 1:
     #    raise TypeError(
     #        "Inputs to utils.is_applicable_filename()"
     #        "must be pure file names only; no parent directory"

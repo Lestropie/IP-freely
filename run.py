@@ -113,9 +113,7 @@ def main():
                     f" for BIDS dataset {bids_dir}"
                 )
                 sys.exit(ReturnCodes.NO_RULESET)
-            ruleset = RULESETS["1.1.x"] \
-                    if bids_version < (1, 7) \
-                    else RULESETS["1.7.x"]
+            ruleset = RULESETS["1.1.x"] if bids_version < (1, 7) else RULESETS["1.7.x"]
 
     evaluate_kwargs = {}
     if args.overrides is not None:

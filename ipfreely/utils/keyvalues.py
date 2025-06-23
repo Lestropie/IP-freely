@@ -47,9 +47,7 @@ def find_overrides(
     return all_results
 
 
-def save_overrides(
-    filepath: pathlib.Path, data: dict[BIDSFilePath, set[str]]
-) -> None:
+def save_overrides(filepath: pathlib.Path, data: dict[BIDSFilePath, set[str]]) -> None:
     json_data = {}
     for datapath, clashes in data.items():
         json_data[str(datapath)] = sorted(clashes)

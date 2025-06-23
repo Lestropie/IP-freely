@@ -5,6 +5,7 @@ InheritanceBehaviour = Enum("InheritanceBehaviour", "forbidden nearest merge")
 
 EXTENSIONS_STR = [".bval", ".bvec", ".json", ".tsv"]
 
+
 @dataclass
 class MetafileExtension:
     extension: str
