@@ -15,7 +15,7 @@ from ipfreely.utils.metadata import all_metadata
 
 __version__ = open(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "version"),
-    encoding="locale",
+    encoding="ascii",
 ).read()  # pylint: disable=consider-using-with
 
 
