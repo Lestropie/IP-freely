@@ -22,11 +22,22 @@ def load_metadata(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
             elif extension == ".tsv":
                 datafile_metadata[extension] = load_tsv(bids_dir, metapaths[-1])
             elif EXTENSIONS[extension].is_numerical_matrix:
-                datafile_metadata[extension] = numpy.loadtxt(bids_dir / metapaths[-1])
+                datafile_metadata[extension] = load_numerical_matrix(
+                    bids_dir, metapaths[-1]
+                )
             else:
                 assert False
         result[str(datafile)] = datafile_metadata
     return result
+
+
+def load_numerical_matrix(
+    bids_dir: pathlib.Path, metapath: BIDSFilePath
+) -> numpy.ndarray:
+    try:
+        return numpy.loadtxt(bids_dir / metapath)
+    except ValueError as e:
+        raise BIDSError(f"Malformed numerical matrix metadata file {metapath}") from e
 
 
 def load_tsv(bids_dir: pathlib.Path, metapath: BIDSFilePath) -> list:
@@ -36,5 +47,8 @@ def load_tsv(bids_dir: pathlib.Path, metapath: BIDSFilePath) -> list:
         for row in rd:
             result.append(row)
     if not (len(row) == len(result[0]) for row in result[1:]):
-        raise BIDSError(f"Malformed .tsv metadata file {metapath}")
+        raise BIDSError(
+            f"Malformed .tsv metadata file {metapath}"
+            " (inconsistent number of columns)"
+        )
     return result

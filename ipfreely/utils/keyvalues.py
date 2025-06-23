@@ -1,6 +1,7 @@
 import json
 import pathlib
 import sys
+from .. import BIDSError
 from ..filepath import BIDSFilePath
 from ..graph import Graph
 
@@ -11,8 +12,11 @@ def load_keyvalues(bids_dir: pathlib.Path, jsonfiles: list[BIDSFilePath]) -> dic
     )
     result: dict[str] = {}
     for jsonfile in jsonfiles:
-        with open(bids_dir / jsonfile.relpath, "r", encoding="utf-8") as f:
-            json_data = json.load(f)
+        try:
+            with open(bids_dir / jsonfile.relpath, "r", encoding="utf-8") as f:
+                json_data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise BIDSError(f"Malformed key-value metadata file {jsonfile}") from e
         for key, value in json_data.items():
             result[key] = value
     return result
