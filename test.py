@@ -12,18 +12,18 @@ from ipfreely.returncodes import ReturnCodes
 from ipfreely.ruleset import Ruleset
 from ipfreely.ruleset import RULESETS
 from ipfreely.utils.keyvalues import find_overrides
-from ipfreely.utils.keyvalues import load_all
+from ipfreely.utils.metadata import load_metadata
 
 # Run through a batch of tests,
 #   making sure that the outcomes across the set of sample datasets match expectations
 # To the greatest extent possible,
 #   generate the target outcomes blinded to the behaviour of the software
-# TODO If a manually-specified graph is stored in the example dataset,
+# If a manually-specified graph is stored in the example dataset,
 #   compare the generated graph against it
-# TODO For example datasets where the behaviour with respect to
+# For example datasets where the behaviour with respect to
 #   metadata file contents is important,
-#   manually generate the expected associated metadata per data file,
-#   and verify that against what is generated from the graph
+#   verify what is generated from the graph
+#   against that manually generated from the expected associated metadata per data file
 
 TestOutcome = Enum("TestOutcome", "success warning violation failure")
 
@@ -211,7 +211,7 @@ def run_test(bids_dir: pathlib.Path, ruleset: Ruleset) -> TestOutcome:
                 f'Error reading reference metadata JSON "{metadata_path}"\n'
             )
             raise
-        data = load_all(bids_dir, graph)
+        data = load_metadata(bids_dir, graph)
         if data != ref_metadata:
             return TestOutcome.failure
     overrides_path = bids_dir / "sourcedata" / "ip_overrides.json"

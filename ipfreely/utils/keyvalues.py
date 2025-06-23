@@ -1,12 +1,11 @@
 import json
 import pathlib
 import sys
-import numpy
 from ..filepath import BIDSFilePath
 from ..graph import Graph
 
 
-def load_files(bids_dir: pathlib.Path, jsonfiles: list[BIDSFilePath]) -> dict[str]:
+def load_keyvalues(bids_dir: pathlib.Path, jsonfiles: list[BIDSFilePath]) -> dict[str]:
     sys.stderr.write(
         "Loading multiple JSONs in order:" f" [{list(map(str, jsonfiles))}]\n"
     )
@@ -16,26 +15,6 @@ def load_files(bids_dir: pathlib.Path, jsonfiles: list[BIDSFilePath]) -> dict[st
             json_data = json.load(f)
         for key, value in json_data.items():
             result[key] = value
-    return result
-
-
-def load_all(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
-    result: dict[str] = {}
-    for datafile, by_extension in graph.m4d.items():
-        datafile_metadata: dict[str] = {}
-        for extension, metafiles in by_extension.items():
-            sys.stderr.write(f"Metafiles to be loaded: {list(map(str, metafiles))}\n")
-            if extension == ".json":
-                datafile_metadata[".json"] = load_files(bids_dir, metafiles)
-            else:
-                # For all other metadata types,
-                #   only the last item in the list is used
-                metafile = metafiles[-1]
-                if extension in (".bvec", ".bval"):
-                    datafile_metadata[extension] = numpy.loadtxt(bids_dir / metafile)
-                elif extension == ".tsv":
-                    datafile_metadata[extension] = str(metafile)
-        result[str(datafile)] = datafile_metadata
     return result
 
 
