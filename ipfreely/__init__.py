@@ -14,9 +14,14 @@ class InheritanceError(Exception):
 
 
 EXCLUSIONS = (
+    "code",
     "dataset_description.json",
+    "derivatives",
     "participants.json",
     "participants.tsv",
+    "phenotype",
+    "samples.json",
+    "samples.tsv",
     "sourcedata",
     "README.md",
     "README.rst",
