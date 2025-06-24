@@ -31,11 +31,11 @@ def load_metadata(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
     return result
 
 
-def load_numerical_matrix(
-    bids_dir: pathlib.Path, metapath: BIDSFilePath
-) -> numpy.ndarray:
+def load_numerical_matrix(bids_dir: pathlib.Path, metapath: BIDSFilePath) -> list:
     try:
-        return numpy.loadtxt(bids_dir / metapath)
+        # numpy.ndarray not JSON serialisable;
+        #   convert to Python native list / list-of-lists
+        return numpy.loadtxt(bids_dir / metapath.relpath).tolist()
     except ValueError as e:
         raise BIDSError(f"Malformed numerical matrix metadata file {metapath}") from e
 

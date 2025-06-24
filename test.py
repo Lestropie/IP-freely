@@ -27,6 +27,10 @@ from ipfreely.utils.metadata import load_metadata
 
 TestOutcome = Enum("TestOutcome", "success warning violation failure")
 
+# TODO Re-structure tests:
+# Build the full graph just once per dataset;
+#   then loop over the rulesets and check the respective outcomes
+
 
 @dataclass
 class Test:
@@ -138,6 +142,18 @@ TESTS = [
     Test("ipi1195e1", "PR1003", TestOutcome.violation),
     Test("ipi1195e1", "I1195", TestOutcome.success),
     Test("ipi1195e1", "forbidden", TestOutcome.violation),
+    # ipdwi001
+    Test("ipdwi001", "1.1.x", TestOutcome.success),
+    Test("ipdwi001", "1.7.x", TestOutcome.success),
+    Test("ipdwi001", "PR1003", TestOutcome.success),
+    Test("ipdwi001", "I1195", TestOutcome.success),
+    Test("ipdwi001", "forbidden", TestOutcome.violation),
+    # ipdwi002
+    Test("ipdwi002", "1.1.x", TestOutcome.success),
+    Test("ipdwi002", "1.7.x", TestOutcome.success),
+    Test("ipdwi002", "PR1003", TestOutcome.success),
+    Test("ipdwi002", "I1195", TestOutcome.success),
+    Test("ipdwi002", "forbidden", TestOutcome.violation),
     # iploosemeta
     Test("iploosemeta", "1.1.x", TestOutcome.warning),
     Test("iploosemeta", "1.7.x", TestOutcome.warning),
@@ -173,7 +189,7 @@ TESTS = [
 
 def run_test(bids_dir: pathlib.Path, ruleset: Ruleset) -> TestOutcome:
     try:
-        graph = Graph(bids_dir, ruleset)
+        graph = Graph(bids_dir)
     except BIDSError:
         return TestOutcome.failure
     # TODO This code structure highlights that evaluate() should be responsible
@@ -191,6 +207,7 @@ def run_test(bids_dir: pathlib.Path, ruleset: Ruleset) -> TestOutcome:
     # TODO For specifically testing,
     #   should ensure that operation of individual functions within utils module
     #   arrive at the same outcomes as does construction of the full graph
+    # TODO Consider applyping graph pruning prior to these comparisons
     graph_path = bids_dir / "sourcedata" / "ip_graph.json"
     if graph_path.is_file():
         try:

@@ -7,9 +7,7 @@ from ..graph import Graph
 
 
 def load_keyvalues(bids_dir: pathlib.Path, jsonfiles: list[BIDSFilePath]) -> dict[str]:
-    sys.stderr.write(
-        "Loading multiple JSONs in order:" f" [{list(map(str, jsonfiles))}]\n"
-    )
+    sys.stderr.write(f"Loading multiple JSONs in order: {list(map(str, jsonfiles))}\n")
     result: dict[str] = {}
     for jsonfile in jsonfiles:
         try:

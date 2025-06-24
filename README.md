@@ -29,6 +29,18 @@ It is however capable of doing the following:
 
 ## Usage
 
+### API for BIDS parsing
+
+The following are the most likely access points for programmers
+looking to use this package for query metadata information in BIDS datasets
+(note: may be subject to change):
+
+-   Function `ipfreely.utils.metafiles_for_datafile()` yields the set of metadata files
+    to be associated with a given data file.
+
+-   Function `utils.keyvalues.load_keyvalues()` produces a metadata dictionary
+    based on the set of JSONs associated with a given data file.
+
 ### Basic usage
 
 The tool can be run natively as a standalone Python executable

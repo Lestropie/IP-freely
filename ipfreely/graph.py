@@ -1,7 +1,6 @@
 import json
 import os
 import pathlib
-from . import InheritanceError
 from . import EXCLUSIONS
 from .filepath import BIDSFilePath
 from .ruleset import Ruleset
@@ -9,7 +8,7 @@ from .utils.get import metafiles_for_datafile
 
 
 class Graph:
-    def __init__(self, bids_dir: pathlib.Path, ruleset: Ruleset):
+    def __init__(self, bids_dir: pathlib.Path):
         self.bids_dir = bids_dir
         # "m4d" is a lookup by data file path
         # The resulting dictionary indexes by metadata file extension:
@@ -20,7 +19,6 @@ class Graph:
         # The contents of each of those fields is a list of data file paths
         #   for which that metadata file is applicable
         self.d4m: dict[BIDSFilePath, list[BIDSFilePath]] = {}
-        self.errors: dict[BIDSFilePath, str] = {}
         for root, _, files in os.walk(bids_dir):
             rootpath = pathlib.Path(root)
             if rootpath.name in EXCLUSIONS:
@@ -31,27 +29,27 @@ class Graph:
                     continue
                 datapath = BIDSFilePath(bids_dir, rootpath / item)
                 if datapath.is_metadata():
+                    # This is just a convenient initialisation of all required lists
+                    #   for the second part of the class initialiser
                     self.d4m[datapath] = []
                     continue
-                try:
-                    # Default: Function accesses all metadata file extensions
-                    self.m4d[datapath] = metafiles_for_datafile(
-                        bids_dir, datapath, ruleset
-                    )
-                except InheritanceError as e:
-                    self.m4d[datapath] = None
-                    self.errors[datapath] = str(e)
-                    continue
+                # Default: Function accesses all metadata file extensions
+                self.m4d[datapath] = metafiles_for_datafile(bids_dir, datapath)
 
         # Invert the metadata-for-data mapping
         #   to produce the data-for-metadata mapping
         for datapath, m4d in self.m4d.items():
-            if m4d is None:
-                continue
             for _, metapaths in m4d.items():
                 for metapath in metapaths:
                     assert metapath in self.d4m
                     self.d4m[metapath].append(datapath)
+
+    # TODO Function to prune graph (/ yield a pruned graph)
+    # This needs to happen *after* graph construction,
+    #   as it needs to be possible to detect occurrences of inheritance clashes
+    #   in case that would be a violation of the ruleset
+    # This could possibly also change eg. m4d[datapath][".bvec"]
+    #   to be a BIDSFilePath rather than list[BIDSFilePath]
 
     def save(self, outpath: pathlib.Path) -> None:
         json_data = {}
@@ -67,6 +65,9 @@ class Graph:
         with open(outpath, "w", encoding="utf-8") as f:
             json.dump(json_data, f, indent=4)
 
+    # TODO Is knowledge of the ruleset really required here?
+    # Could permit ambiguity where possible regardless,
+    #   with the invalidity of the graph handled elsewhere?
     def is_equal(self, ref: dict[str], _: Ruleset) -> bool:
         # Note that "ref" here is a dictionary
         #   that is no longer split by direction of association

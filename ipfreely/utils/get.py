@@ -6,13 +6,12 @@ from ..filepath import BIDSFilePath
 from ..extensions import EXTENSIONS
 from ..extensions import EXTENSIONS_STR
 from ..extensions import InheritanceBehaviour
-from ..ruleset import InheritanceWithinDir
 from ..ruleset import Ruleset
 from .applicability import is_applicable
 
 
 def metafiles_for_datafile(
-    bids_dir: pathlib.Path, datafile: BIDSFilePath, ruleset: Ruleset, **kwargs
+    bids_dir: pathlib.Path, datafile: BIDSFilePath, **kwargs
 ) -> dict[str, list[BIDSFilePath]]:
 
     single_extension = kwargs.pop("extension", None)
@@ -59,70 +58,6 @@ def metafiles_for_datafile(
             if not is_applicable(datafile, filepath):
                 continue
 
-            # Violations to the Inheritance Principle:
-            # Cannot be more than one applicable metadata file
-            #   at any level of the filesystem hierarchy
-            if (
-                EXTENSIONS[filepath.extension].inheritance_behaviour
-                == InheritanceBehaviour.forbidden
-            ):
-                if filepath.extension in all_matches or extension in dir_matches:
-                    raise InheritanceError(
-                        "Multiple applicable metadata files"
-                        f" with file extension {extension}"
-                        f" for data file {datafile}"
-                    )
-            elif (
-                EXTENSIONS[filepath.extension].inheritance_behaviour
-                == InheritanceBehaviour.nearest
-            ):
-                pass
-            elif (
-                EXTENSIONS[filepath.extension].inheritance_behaviour
-                == InheritanceBehaviour.merge
-            ):
-
-                # While .behaviour == merge and .extension == 'json'
-                #   are technically not one and the same,
-                #   the code is currently written as such
-                assert filepath.extension == ".json"
-
-                if ruleset.json_inheritance_within_dir == InheritanceWithinDir.unique:
-                    # Detect attempt to add a second applicable JSON
-                    #   within this directory level
-                    if filepath.extension in dir_matches:
-                        raise InheritanceError(
-                            f"Multiple applicable {filepath.extension} metadata files"
-                            " within a single filesystem level"
-                            f" for data file {datafile}"
-                            f' forbidden in ruleset "{ruleset.name}"'
-                        )
-                elif (
-                    ruleset.json_inheritance_within_dir == InheritanceWithinDir.ordered
-                ):
-                    # Detect attempt to have two applicable JSONs
-                    #   within a single directory level
-                    #   that both possess the same number of entities
-                    #   (and therefore can't be unambiguously sorted)
-                    if filepath.extension in dir_matches and any(
-                        len(item.entities) == len(filepath.entities)
-                        for item in dir_matches[filepath.extension]
-                    ):
-                        raise InheritanceError(
-                            f"Multiple applicable {filepath.extension} metadata files"
-                            " with an identical number of entities"
-                            " within a single filesystem level"
-                            f" for data file {datafile}"
-                            f' forbidden in ruleset "{ruleset.name}"'
-                        )
-                elif ruleset.json_inheritance_within_dir == InheritanceWithinDir.any:
-                    pass
-                else:
-                    assert False
-
-            else:
-                assert False
-
             # Add this file to the set of metadata files
             #   deemed applicable to this data file
             #   at this level of the filesystem hierarchy
@@ -134,52 +69,10 @@ def metafiles_for_datafile(
         for extension, filepaths in dir_matches.items():
             # Resolve the set of matches found that this filesystem hierarchy level
             #   with the set of matches found at all levels
-            # If we are only interested in whichever one metadata file
-            #   is closest to the data file,
-            #   then we don't need to worry about any of the contents
-            #   of any lower parent directories
-            if (
-                extension not in all_matches
-                or EXTENSIONS[extension].inheritance_behaviour
-                == InheritanceBehaviour.nearest
-            ):
-                all_matches[extension] = sorted(filepaths)
-            else:
+            if extension in all_matches:
                 all_matches[extension].extend(sorted(filepaths))
-
-    # Additional violation checks
-    #   after all contents of this filesystem level have been read
-    nearest_matches: dict[str] = {}
-    for extension, filepaths in all_matches.items():
-        if EXTENSIONS[extension].inheritance_behaviour == InheritanceBehaviour.nearest:
-            # Needs to be a singular unambiguous choice
-            #   as to which of these metadata files is "nearest" to the data file
-            # Prior code ensures that if there are multiple candidate matches
-            #   across multiple different filesystem levels,
-            #   any that are further down the filesystem hierarchy
-            #   than at least one other match
-            #   will already have been discarded;
-            #   we are therefore only considering the prospect of multiple matches
-            #   within a single filesystem level
-            if len(filepaths) == 1:
-                continue
-            max_entity_count = max(len(item.entities) for item in filepaths)
-            nearest = [
-                item for item in filepaths if len(item.entities) == max_entity_count
-            ]
-            if len(nearest) > 1:
-                raise InheritanceError(
-                    f"Ambiguity in nearest .{extension} metadata file"
-                    f" applicable to data file {datafile}"
-                    " due to presence of multiple applicable metadata files"
-                    " at one filesystem level with an equal number of entities"
-                    f' forbidden in ruleset "{ruleset.name}"'
-                )
-            nearest_matches[extension] = nearest[0]
-    # For extensions where only the nearest applicable metadata file is used,
-    #   remove those that should be ignored
-    for extension, filepath in nearest_matches:
-        all_matches[extension] = [filepath]
+            else:
+                all_matches[extension] = sorted(filepaths)
 
     return all_matches
 

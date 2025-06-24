@@ -10,7 +10,7 @@ from ipfreely.filepath import BIDSError
 from ipfreely.graph import Graph
 from ipfreely.returncodes import ReturnCodes
 from ipfreely.ruleset import RULESETS
-from ipfreely.utils.keyvalues import load_all
+from ipfreely.utils.metadata import load_metadata
 
 
 __version__ = open(
@@ -105,7 +105,7 @@ def main():
             ruleset = RULESETS["I1195"]
         else:
             try:
-                bids_version = tuple(int(i) for i in bids_version_string.aplit("."))
+                bids_version = tuple(int(i) for i in bids_version_string.split("."))
             except TypeError:
                 sys.stderr.write(
                     "Unable to determine appropriate ruleset"
@@ -122,7 +122,7 @@ def main():
         evaluate_kwargs["warnings_as_errors"] = args.warnings_as_errors
 
     try:
-        graph: Graph = Graph(bids_dir, ruleset)
+        graph: Graph = Graph(bids_dir)
         return_code: ReturnCodes = evaluate(bids_dir, ruleset, graph, **evaluate_kwargs)
     except BIDSError as e:
         sys.stderr.write(f"Error parsing BIDS dataset: {e}\n")
@@ -132,7 +132,7 @@ def main():
         graph.save(args.graph)
 
     if args.metadata is not None:
-        data = load_all(bids_dir, graph)
+        data = load_metadata(bids_dir, graph)
         with open(args.metadata, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
 
