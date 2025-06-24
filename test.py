@@ -168,6 +168,13 @@ DATASETS = {
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
     ],
+    "ipdwi003": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
     "iploosemeta": [
         Test("1.1.x", TestOutcome.warning),
         Test("1.7.x", TestOutcome.warning),
@@ -220,6 +227,8 @@ def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutc
     #   should ensure that operation of individual functions within utils module
     #   arrive at the same outcomes as does construction of the full graph
     # TODO Consider applyping graph pruning prior to these comparisons
+    # The pruning operation could be based on the capabilities of the metadata file extensions,
+    #   and is not tied to any specific ruleset
     graph_path = bids_dir / "sourcedata" / "ip_graph.json"
     if graph_path.is_file():
         try:
@@ -283,7 +292,7 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
         graph = Graph(bids_dir)
         dataset_mismatches = run_tests(bids_dir, graph, tests)
         for dataset_mismatch in dataset_mismatches:
-            mismatches.append((dataset, *dataset_mismatch))
+            mismatches.append((dataset, dataset_mismatch[0], dataset_mismatch[1]))
 
     if mismatches:
         sys.stderr.write(f"{len(mismatches)} discrepancies in test outcomes:\n")
@@ -301,9 +310,9 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
 
         for mismatch in mismatches:
             sys.stderr.write(
-                f"    Dataset: {mismatch[0][0]},"
-                f" ruleset: {mismatch[0][1].ruleset},"
-                f" expected {outcome2str(mismatch[0][1].expectation)};"
+                f"    Dataset: {mismatch[0]},"
+                f" ruleset: {mismatch[1].ruleset},"
+                f" expected {outcome2str(mismatch[1].expectation)};"
                 f" actual outcome {outcome2str(mismatch[2])}\n"
             )
         return 1

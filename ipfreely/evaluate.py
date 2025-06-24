@@ -35,7 +35,7 @@ def evaluate(
             len(metafiles) == 1
             or len(metafiles[-2].relpath.parents) < len(metafiles[-1].relpath.parents)
             or bool(metafiles[-2].suffix) != bool(metafiles[1].suffix)
-            or len(metafiles[-2].entities < len(metafiles[1]).entities)
+            or len(metafiles[-2].entities) < len(metafiles[1].entities)
         )
 
     def has_withindir_clash(
