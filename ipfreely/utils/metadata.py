@@ -9,6 +9,16 @@ from .keyvalues import load_keyvalues
 
 
 def load_metadata(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
+
+    def nearest_metapath(metapaths) -> BIDSFilePath:
+        if isinstance(metapaths, BIDSFilePath):
+            return metapaths
+        if isinstance(metapaths, list):
+            if not isinstance(metapaths[0], BIDSFilePath):
+                raise TypeError
+            return metapaths[-1]
+        raise TypeError
+
     result: dict[str] = {}
     for datafile, by_extension in graph.m4d.items():
         datafile_metadata: dict[str] = {}
@@ -20,10 +30,13 @@ def load_metadata(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
             if extension == ".json":
                 datafile_metadata[".json"] = load_keyvalues(bids_dir, metapaths)
             elif extension == ".tsv":
-                datafile_metadata[extension] = load_tsv(bids_dir, metapaths[-1])
+
+                datafile_metadata[extension] = load_tsv(
+                    bids_dir, nearest_metapath(metapaths)
+                )
             elif EXTENSIONS[extension].is_numerical_matrix:
                 datafile_metadata[extension] = load_numerical_matrix(
-                    bids_dir, metapaths[-1]
+                    bids_dir, nearest_metapath(metapaths)
                 )
             else:
                 assert False

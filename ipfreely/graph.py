@@ -1,9 +1,11 @@
 import json
 import os
 import pathlib
+from . import BIDSError
 from . import EXCLUSIONS
+from .extensions import EXTENSIONS
+from .extensions import InheritanceBehaviour
 from .filepath import BIDSFilePath
-from .ruleset import Ruleset
 from .utils.get import metafiles_for_datafile
 
 
@@ -27,29 +29,80 @@ class Graph:
             for item in files:
                 if root_is_bids_dir and item in EXCLUSIONS:
                     continue
-                datapath = BIDSFilePath(bids_dir, rootpath / item)
-                if datapath.is_metadata():
-                    # This is just a convenient initialisation of all required lists
-                    #   for the second part of the class initialiser
-                    self.d4m[datapath] = []
+                filepath = BIDSFilePath(bids_dir, rootpath / item)
+                if filepath.is_metadata():
+                    if not filepath in self.d4m:
+                        self.d4m[filepath] = []
                     continue
                 # Default: Function accesses all metadata file extensions
-                self.m4d[datapath] = metafiles_for_datafile(bids_dir, datapath)
+                all_metapaths = metafiles_for_datafile(bids_dir, filepath)
+                self.m4d[filepath] = all_metapaths
+                # Add the inverse mapping
+                for _, metapaths in all_metapaths.items():
+                    for metapath in metapaths:
+                        if metapath in self.d4m:
+                            self.d4m[metapath].append(filepath)
+                        else:
+                            self.d4m[metapath] = [filepath]
 
-        # Invert the metadata-for-data mapping
-        #   to produce the data-for-metadata mapping
-        for datapath, m4d in self.m4d.items():
-            for _, metapaths in m4d.items():
-                for metapath in metapaths:
-                    assert metapath in self.d4m
-                    self.d4m[metapath].append(datapath)
-
-    # TODO Function to prune graph (/ yield a pruned graph)
+    # Function to prune graph
     # This needs to happen *after* graph construction,
     #   as it needs to be possible to detect occurrences of inheritance clashes
     #   in case that would be a violation of the ruleset
-    # This could possibly also change eg. m4d[datapath][".bvec"]
+    # This also changes eg. m4d[datapath][".bvec"]
     #   to be a BIDSFilePath rather than list[BIDSFilePath]
+    def prune(self) -> None:
+        # Identify data file - metadata extension associations
+        #   for which only the last metadata file is applicable
+        new_m4d: dict[BIDSFilePath, dict[str, list[BIDSFilePath]]] = {}
+        # All metadata files need to remain in this mapping,
+        #   even if after pruning it does not map to any data files
+        self.d4m = {metapath: [] for metapath in self.d4m}
+        for datapath, by_extension in self.m4d.items():
+            new_m4d[datapath] = {}
+            for extension, metapaths in by_extension.items():
+                if (
+                    EXTENSIONS[extension].inheritance_behaviour
+                    == InheritanceBehaviour.merge
+                ):
+                    new_m4d[datapath][extension] = metapaths
+                    for metapath in metapaths:
+                        self.d4m[metapath].append(datapath)
+                    continue
+                if (
+                    EXTENSIONS[extension].inheritance_behaviour
+                    == InheritanceBehaviour.forbidden
+                ):
+                    if len(self.m4d[datapath][extension]) > 1:
+                        raise BIDSError(
+                            "Attempt to prune invalid metadata association graph:"
+                            f" ({datapath.relpath} has multiple applicable"
+                            f" {extension} metadata files)"
+                        )
+                    # Change from a list of metapaths of length 1 to a metapath
+                    new_m4d[datapath][extension] = metapaths[0]
+                    self.d4m[metapaths[0]].append(datapath)
+                    continue
+                if (
+                    EXTENSIONS[extension].inheritance_behaviour
+                    == InheritanceBehaviour.nearest
+                ):
+                    # Make sure there isn't any ambiguity in which to select
+                    if (
+                        len(metapaths) > 1
+                        and not (metapaths[-2] < metapaths[-1])
+                        and not (metapaths[-1] < metapaths[-2])
+                    ):
+                        raise BIDSError(
+                            "Attempt to prune invalid metadata association graph:"
+                            f" ({datapath.relpath} has ambiguous applicable"
+                            f"{extension} file"
+                        )
+                    new_m4d[datapath][extension] = metapaths[-1]
+                    self.d4m[metapaths[-1]].append(datapath)
+                    continue
+                assert False
+        self.m4d = new_m4d
 
     def save(self, outpath: pathlib.Path) -> None:
         json_data = {}
@@ -65,10 +118,7 @@ class Graph:
         with open(outpath, "w", encoding="utf-8") as f:
             json.dump(json_data, f, indent=4)
 
-    # TODO Is knowledge of the ruleset really required here?
-    # Could permit ambiguity where possible regardless,
-    #   with the invalidity of the graph handled elsewhere?
-    def is_equal(self, ref: dict[str], _: Ruleset) -> bool:
+    def __eq__(self, ref: dict[str]) -> bool:
         # Note that "ref" here is a dictionary
         #   that is no longer split by direction of association
         for datafile, by_extension in self.m4d.items():
@@ -82,6 +132,11 @@ class Graph:
             for extension, metafiles in by_extension.items():
                 if extension not in ref_by_extension:
                     return False
+                if isinstance(metafiles, BIDSFilePath):
+                    if str(metafiles) != ref_by_extension[extension]:
+                        return False
+                    continue
+                assert isinstance(metafiles, list)
                 if any(
                     str(metafile) not in ref_by_extension[extension]
                     for metafile in metafiles

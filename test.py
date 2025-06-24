@@ -213,22 +213,7 @@ DATASETS = {
 }
 
 
-def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutcome:
-    return_code = evaluate(bids_dir, ruleset, graph, warnings_as_errors=False)
-    if return_code != ReturnCodes.SUCCESS:
-        return TestOutcome.violation
-    outcome = (
-        TestOutcome.warning
-        if evaluate(bids_dir, ruleset, graph, warnings_as_errors=True)
-        == ReturnCodes.WARNINGS_AS_ERRORS
-        else TestOutcome.success
-    )
-    # TODO For specifically testing,
-    #   should ensure that operation of individual functions within utils module
-    #   arrive at the same outcomes as does construction of the full graph
-    # TODO Consider applyping graph pruning prior to these comparisons
-    # The pruning operation could be based on the capabilities of the metadata file extensions,
-    #   and is not tied to any specific ruleset
+def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
     graph_path = bids_dir / "sourcedata" / "ip_graph.json"
     if graph_path.is_file():
         try:
@@ -237,8 +222,8 @@ def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutc
         except json.JSONDecodeError:
             sys.stderr.write(f'Error reading reference graph JSON "{graph_path}"\n')
             raise
-        if not graph.is_equal(ref_graph, ruleset):
-            return TestOutcome.failure
+        if not graph == ref_graph:
+            return False
     metadata_path = bids_dir / "sourcedata" / "ip_metadata.json"
     if metadata_path.is_file():
         try:
@@ -251,7 +236,7 @@ def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutc
             raise
         data = load_metadata(bids_dir, graph)
         if data != ref_metadata:
-            return TestOutcome.failure
+            return False
     overrides_path = bids_dir / "sourcedata" / "ip_overrides.json"
     if overrides_path.is_file():
         try:
@@ -265,11 +250,26 @@ def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutc
         data = find_overrides(bids_dir, graph)
         data = {str(datapath): list(keys) for datapath, keys in data.items()}
         if data != ref_overrides:
-            return TestOutcome.failure
-    return outcome
+            return False
+    return True
 
 
-def run_tests(
+def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutcome:
+    return_code = evaluate(bids_dir, ruleset, graph, warnings_as_errors=False)
+    if return_code != ReturnCodes.SUCCESS:
+        return TestOutcome.violation
+    return (
+        TestOutcome.warning
+        if evaluate(bids_dir, ruleset, graph, warnings_as_errors=True)
+        == ReturnCodes.WARNINGS_AS_ERRORS
+        else TestOutcome.success
+    )
+    # TODO For specifically testing,
+    #   should ensure that operation of individual functions within utils module
+    #   arrive at the same outcomes as does construction of the full graph
+
+
+def run_dataset_tests(
     bids_dir: pathlib.Path, graph: Graph, tests: list[Test]
 ) -> list[tuple[Test, TestOutcome]]:
     mismatches: list[tuple[Test, TestOutcome]] = []
@@ -290,9 +290,18 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
         if not bids_dir.is_dir():
             raise FileNotFoundError(f"Missing example BIDS dataset" f" {dataset}")
         graph = Graph(bids_dir)
-        dataset_mismatches = run_tests(bids_dir, graph, tests)
+        dataset_mismatches = run_dataset_tests(bids_dir, graph, tests)
         for dataset_mismatch in dataset_mismatches:
             mismatches.append((dataset, dataset_mismatch[0], dataset_mismatch[1]))
+        graph.prune()
+        if not check_dataset_graph(bids_dir, graph):
+            mismatches.append(
+                (
+                    dataset,
+                    Test("verify_graph", TestOutcome.success),
+                    TestOutcome.failure,
+                )
+            )
 
     if mismatches:
         sys.stderr.write(f"{len(mismatches)} discrepancies in test outcomes:\n")
