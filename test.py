@@ -27,174 +27,186 @@ from ipfreely.utils.metadata import load_metadata
 
 TestOutcome = Enum("TestOutcome", "success warning violation failure")
 
-# TODO Re-structure tests:
-# Build the full graph just once per dataset;
-#   then loop over the rulesets and check the respective outcomes
-
 
 @dataclass
 class Test:
-    dataset_name: str
     ruleset: str
     expectation: TestOutcome
 
 
-TESTS = [
-    # ip112e1bad
-    Test("ip112e1bad", "1.1.x", TestOutcome.violation),
-    Test("ip112e1bad", "1.7.x", TestOutcome.violation),
-    Test("ip112e1bad", "PR1003", TestOutcome.success),
-    Test("ip112e1bad", "I1195", TestOutcome.success),
-    Test("ip112e1bad", "forbidden", TestOutcome.violation),
-    # ip112e1good
-    Test("ip112e1good", "1.1.x", TestOutcome.success),
-    Test("ip112e1good", "1.7.x", TestOutcome.success),
-    Test("ip112e1good", "PR1003", TestOutcome.success),
-    Test("ip112e1good", "I1195", TestOutcome.success),
-    Test("ip112e1good", "forbidden", TestOutcome.violation),
-    # ip112e2v1
-    Test("ip112e2v1", "1.1.x", TestOutcome.success),
-    Test("ip112e2v1", "1.7.x", TestOutcome.success),
-    Test("ip112e2v1", "PR1003", TestOutcome.success),
-    Test("ip112e2v1", "I1195", TestOutcome.success),
-    Test("ip112e2v1", "forbidden", TestOutcome.violation),
-    # ip112e2v2
-    Test("ip112e2v2", "1.1.x", TestOutcome.success),
-    Test("ip112e2v2", "1.7.x", TestOutcome.success),
-    Test("ip112e2v2", "PR1003", TestOutcome.success),
-    Test("ip112e2v2", "I1195", TestOutcome.success),
-    Test("ip112e2v2", "forbidden", TestOutcome.violation),
-    # ip112e3v1
-    Test("ip112e3v1", "1.1.x", TestOutcome.success),
-    Test("ip112e3v1", "1.7.x", TestOutcome.success),
-    Test("ip112e3v1", "PR1003", TestOutcome.success),
-    Test("ip112e3v1", "I1195", TestOutcome.success),
-    Test("ip112e3v1", "forbidden", TestOutcome.violation),
-    # ip112e3v2
-    Test("ip112e3v2", "1.1.x", TestOutcome.warning),
-    Test("ip112e3v2", "1.7.x", TestOutcome.warning),
-    Test("ip112e3v2", "PR1003", TestOutcome.warning),
-    Test("ip112e3v2", "I1195", TestOutcome.warning),
-    Test("ip112e3v2", "forbidden", TestOutcome.violation),
-    # ip112badmetapathe1
-    Test("ip112badmetapathe1", "1.1.x", TestOutcome.violation),
-    Test("ip112badmetapathe1", "1.7.x", TestOutcome.success),
-    Test("ip112badmetapathe1", "PR1003", TestOutcome.success),
-    Test("ip112badmetapathe1", "I1195", TestOutcome.success),
-    Test("ip112badmetapathe1", "forbidden", TestOutcome.violation),
-    # ip112badmetapathe2v1
-    Test("ip112badmetapathe2v1", "1.1.x", TestOutcome.violation),
-    Test("ip112badmetapathe2v1", "1.7.x", TestOutcome.violation),
-    Test("ip112badmetapathe2v1", "PR1003", TestOutcome.violation),
-    Test("ip112badmetapathe2v1", "I1195", TestOutcome.violation),
-    Test("ip112badmetapathe2v1", "forbidden", TestOutcome.violation),
-    # ip112badmetapathe2v2
-    Test("ip112badmetapathe2v2", "1.1.x", TestOutcome.violation),
-    Test("ip112badmetapathe2v2", "1.7.x", TestOutcome.success),
-    Test("ip112badmetapathe2v2", "PR1003", TestOutcome.success),
-    Test("ip112badmetapathe2v2", "I1195", TestOutcome.success),
-    Test("ip112badmetapathe2v2", "forbidden", TestOutcome.violation),
-    # ip170e1
-    Test("ip170e1", "1.1.x", TestOutcome.warning),
-    Test("ip170e1", "1.7.x", TestOutcome.warning),
-    Test("ip170e1", "PR1003", TestOutcome.warning),
-    Test("ip170e1", "I1195", TestOutcome.warning),
-    Test("ip170e1", "forbidden", TestOutcome.violation),
-    # ip170e2
-    Test("ip170e2", "1.1.x", TestOutcome.violation),
-    Test("ip170e2", "1.7.x", TestOutcome.violation),
-    Test("ip170e2", "PR1003", TestOutcome.success),
-    Test("ip170e2", "I1195", TestOutcome.success),
-    Test("ip170e2", "forbidden", TestOutcome.violation),
-    # ip170e3
-    Test("ip170e3", "1.1.x", TestOutcome.success),
-    Test("ip170e3", "1.7.x", TestOutcome.success),
-    Test("ip170e3", "PR1003", TestOutcome.success),
-    Test("ip170e3", "I1195", TestOutcome.success),
-    Test("ip170e3", "forbidden", TestOutcome.violation),
-    # ip170e4
-    Test("ip170e4", "1.1.x", TestOutcome.success),
-    Test("ip170e4", "1.7.x", TestOutcome.success),
-    Test("ip170e4", "PR1003", TestOutcome.success),
-    Test("ip170e4", "I1195", TestOutcome.success),
-    Test("ip170e4", "forbidden", TestOutcome.violation),
-    # ipabsent
-    Test("ipabsent", "1.1.x", TestOutcome.success),
-    Test("ipabsent", "1.7.x", TestOutcome.success),
-    Test("ipabsent", "PR1003", TestOutcome.success),
-    Test("ipabsent", "I1195", TestOutcome.success),
-    Test("ipabsent", "forbidden", TestOutcome.success),
-    # ip170badrelpath
-    Test("ip170badrelpath", "1.1.x", TestOutcome.success),
-    Test("ip170badrelpath", "1.7.x", TestOutcome.violation),
-    Test("ip170badrelpath", "PR1003", TestOutcome.violation),
-    Test("ip170badrelpath", "I1195", TestOutcome.violation),
-    Test("ip170badrelpath", "forbidden", TestOutcome.violation),
-    # ipexclnonsc
-    Test("ipexclnonsc", "1.1.x", TestOutcome.warning),
-    Test("ipexclnonsc", "1.7.x", TestOutcome.warning),
-    Test("ipexclnonsc", "PR1003", TestOutcome.warning),
-    Test("ipexclnonsc", "I1195", TestOutcome.warning),
-    Test("ipexclnonsc", "forbidden", TestOutcome.violation),
-    # ipi1195e1
-    Test("ipi1195e1", "1.1.x", TestOutcome.violation),
-    Test("ipi1195e1", "1.7.x", TestOutcome.violation),
-    Test("ipi1195e1", "PR1003", TestOutcome.violation),
-    Test("ipi1195e1", "I1195", TestOutcome.success),
-    Test("ipi1195e1", "forbidden", TestOutcome.violation),
-    # ipdwi001
-    Test("ipdwi001", "1.1.x", TestOutcome.success),
-    Test("ipdwi001", "1.7.x", TestOutcome.success),
-    Test("ipdwi001", "PR1003", TestOutcome.success),
-    Test("ipdwi001", "I1195", TestOutcome.success),
-    Test("ipdwi001", "forbidden", TestOutcome.violation),
-    # ipdwi002
-    Test("ipdwi002", "1.1.x", TestOutcome.success),
-    Test("ipdwi002", "1.7.x", TestOutcome.success),
-    Test("ipdwi002", "PR1003", TestOutcome.success),
-    Test("ipdwi002", "I1195", TestOutcome.success),
-    Test("ipdwi002", "forbidden", TestOutcome.violation),
-    # iploosemeta
-    Test("iploosemeta", "1.1.x", TestOutcome.warning),
-    Test("iploosemeta", "1.7.x", TestOutcome.warning),
-    Test("iploosemeta", "PR1003", TestOutcome.warning),
-    Test("iploosemeta", "I1195", TestOutcome.warning),
-    Test("iploosemeta", "forbidden", TestOutcome.violation),
-    # ippr1003ae1
-    Test("ippr1003ae1", "1.1.x", TestOutcome.violation),
-    Test("ippr1003ae1", "1.7.x", TestOutcome.violation),
-    Test("ippr1003ae1", "PR1003", TestOutcome.success),
-    Test("ippr1003ae1", "I1195", TestOutcome.success),
-    Test("ippr1003ae1", "forbidden", TestOutcome.violation),
-    # ippr1003ae2
-    Test("ippr1003ae2", "1.1.x", TestOutcome.violation),
-    Test("ippr1003ae2", "1.7.x", TestOutcome.violation),
-    Test("ippr1003ae2", "PR1003", TestOutcome.violation),
-    Test("ippr1003ae2", "I1195", TestOutcome.success),
-    Test("ippr1003ae2", "forbidden", TestOutcome.violation),
-    # ippr1003e1v1
-    Test("ippr1003e1v1", "1.1.x", TestOutcome.success),
-    Test("ippr1003e1v1", "1.7.x", TestOutcome.success),
-    Test("ippr1003e1v1", "PR1003", TestOutcome.success),
-    Test("ippr1003e1v1", "I1195", TestOutcome.success),
-    Test("ippr1003e1v1", "forbidden", TestOutcome.violation),
-    # ippr1003e1v2
-    Test("ippr1003e1v2", "1.1.x", TestOutcome.violation),
-    Test("ippr1003e1v2", "1.7.x", TestOutcome.violation),
-    Test("ippr1003e1v2", "PR1003", TestOutcome.success),
-    Test("ippr1003e1v2", "I1195", TestOutcome.success),
-    Test("ippr1003e1v2", "forbidden", TestOutcome.violation),
-]
+DATASETS = {
+    "ip112e1bad": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e1good": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e2v1": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e2v2": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e3v1": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e3v2": [
+        Test("1.1.x", TestOutcome.warning),
+        Test("1.7.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.warning),
+        Test("I1195", TestOutcome.warning),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112badmetapathe1": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112badmetapathe2v1": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.violation),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112badmetapathe2v2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip170e1": [
+        Test("1.1.x", TestOutcome.warning),
+        Test("1.7.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.warning),
+        Test("I1195", TestOutcome.warning),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip170e2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip170e3": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip170e4": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipabsent": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.success),
+    ],
+    "ip170badrelpath": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.violation),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipexclnonsc": [
+        Test("1.1.x", TestOutcome.warning),
+        Test("1.7.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.warning),
+        Test("I1195", TestOutcome.warning),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipi1195e1": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipdwi001": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipdwi002": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "iploosemeta": [
+        Test("1.1.x", TestOutcome.warning),
+        Test("1.7.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.warning),
+        Test("I1195", TestOutcome.warning),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ippr1003ae1": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ippr1003ae2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ippr1003e1v1": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ippr1003e1v2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+}
 
 
-def run_test(bids_dir: pathlib.Path, ruleset: Ruleset) -> TestOutcome:
-    try:
-        graph = Graph(bids_dir)
-    except BIDSError:
-        return TestOutcome.failure
-    # TODO This code structure highlights that evaluate() should be responsible
-    #   for determining whether the ruleset is violated,
-    #   not the graph construction itself
+def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutcome:
     return_code = evaluate(bids_dir, ruleset, graph, warnings_as_errors=False)
     if return_code != ReturnCodes.SUCCESS:
         return TestOutcome.violation
@@ -248,20 +260,31 @@ def run_test(bids_dir: pathlib.Path, ruleset: Ruleset) -> TestOutcome:
     return outcome
 
 
-def run_tests(examples_dir: pathlib.Path) -> int:
-    # For any test for which the outcome does not match expectation,
-    #   store the test along with the actual outcome
+def run_tests(
+    bids_dir: pathlib.Path, graph: Graph, tests: list[Test]
+) -> list[tuple[Test, TestOutcome]]:
     mismatches: list[tuple[Test, TestOutcome]] = []
-    for test in TESTS:
-        bids_dir = examples_dir / test.dataset_name
-        if not bids_dir.is_dir():
-            raise FileNotFoundError(
-                f"Missing example BIDS dataset" f" {test.dataset_name}"
-            )
+    for test in tests:
         ruleset: Ruleset = RULESETS[test.ruleset]
-        outcome = run_test(bids_dir, ruleset)
+        outcome = run_test(bids_dir, graph, ruleset)
         if outcome != test.expectation:
             mismatches.append((test, outcome))
+    return mismatches
+
+
+def run_datasets(examples_dir: pathlib.Path) -> int:
+    # For any test for which the outcome does not match expectation,
+    #   store the test along with the actual outcome
+    mismatches: list[tuple[str, Test, TestOutcome]] = []
+    for dataset, tests in DATASETS.items():
+        bids_dir = examples_dir / dataset
+        if not bids_dir.is_dir():
+            raise FileNotFoundError(f"Missing example BIDS dataset" f" {dataset}")
+        graph = Graph(bids_dir)
+        dataset_mismatches = run_tests(bids_dir, graph, tests)
+        for dataset_mismatch in dataset_mismatches:
+            mismatches.append((dataset, *dataset_mismatch))
+
     if mismatches:
         sys.stderr.write(f"{len(mismatches)} discrepancies in test outcomes:\n")
 
@@ -278,10 +301,10 @@ def run_tests(examples_dir: pathlib.Path) -> int:
 
         for mismatch in mismatches:
             sys.stderr.write(
-                f"    Dataset: {mismatch[0].dataset_name},"
-                f" ruleset: {mismatch[0].ruleset},"
-                f" expected {outcome2str(mismatch[0].expectation)};"
-                f" actual outcome {outcome2str(mismatch[1])}\n"
+                f"    Dataset: {mismatch[0][0]},"
+                f" ruleset: {mismatch[0][1].ruleset},"
+                f" expected {outcome2str(mismatch[0][1].expectation)};"
+                f" actual outcome {outcome2str(mismatch[2])}\n"
             )
         return 1
     return 0
@@ -305,7 +328,7 @@ def main():
         sys.stderr.write(f"Input BIDS examples directory {args.examples_dir} not found")
         sys.exit(1)
 
-    return run_tests(examples_dir)
+    return run_datasets(examples_dir)
 
 
 if __name__ == "__main__":
