@@ -1,6 +1,7 @@
 import json
 import os
 import pathlib
+import sys
 from . import BIDSError
 from . import EXCLUSIONS
 from .extensions import EXTENSIONS
@@ -139,16 +140,16 @@ class Graph:
                     if str(metafiles) != ref_by_extension[extension]:
                         return False
                     continue
-                assert isinstance(metafiles, list)
-                if any(
-                    str(metafile) not in ref_by_extension[extension]
-                    for metafile in metafiles
-                ) or any(
-                    not any(ref_metafile == str(metafile) for metafile in metafiles)
-                    for ref_metafile in ref_by_extension[extension]
-                ):
+                assert isinstance(metafiles, BIDSFilePathList)
+                # Perform test for equivalence of lists,
+                #   accounting for arbitrary ordering of items that are tied
+                #   in filesystem location and # entities
+                ref_paths: BIDSFilePathList = [
+                    BIDSFilePath(pathlib.Path(os.sep), pathlib.Path(os.sep, ref_path))
+                    for ref_path in ref_by_extension[extension]
+                ]
+                if not metafiles == ref_paths:
                     return False
-                # TODO Implement check for equivalent ordering (if necessary)
         for metafile, datafiles in self.d4m.items():
             if str(metafile) not in ref:
                 return False

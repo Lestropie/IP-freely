@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import pathlib
 from . import BIDSError
 from .extensions import EXTENSIONS_STR
@@ -162,3 +163,51 @@ class BIDSFilePathList(list[BIDSFilePath]):
             ) < len(metafiles_within_dir):
                 return True
         return False
+
+    def __eq__(self, ref: "BIDSFilePathList") -> bool:
+        # Check for equivalency,
+        #   which enforces equivalent ordering
+        #   *except for* arbitrary ordering of ties
+        if len(self) != len(ref):
+            return False
+
+        # Transform both lists into a form that is easier to test for equivalence
+        #   given the prospect of ties
+        # This needs to be:
+        # - Indexed by tuple (# parents, # entities)
+        # - Include index of first entry
+        # - Include list of paths within that group
+        @dataclass
+        class Group:
+            depth: tuple[int, int]
+            index: int
+            paths: BIDSFilePathList
+
+        data_self: list[Group] = []
+        data_ref: list[Group] = []
+        for index, filepath in enumerate(self):
+            parent_count: int = len(filepath.relpath.parents)
+            entity_count: int = len(filepath.entities)
+            if data_self and (parent_count, entity_count) == data_self[-1].depth:
+                data_self[-1].paths.append(filepath)
+            else:
+                data_self.append(Group((parent_count, entity_count), index, [filepath]))
+        for index, filepath in enumerate(ref):
+            parent_count: int = len(filepath.relpath.parents)
+            entity_count: int = len(filepath.entities)
+            if data_ref and (parent_count, entity_count) == data_ref[-1].depth:
+                data_ref[-1].paths.append(filepath)
+            else:
+                data_ref.append(Group((parent_count, entity_count), index, [filepath]))
+        if len(data_self) != len(data_ref):
+            return False
+        for group_self, group_ref in zip(data_self, data_ref):
+            if group_self.depth != group_ref.depth:
+                return False
+            if group_self.index != group_ref.index:
+                return False
+            if not all(
+                path_self in group_ref.paths for path_self in group_self.paths
+            ) or not all(path_ref in group_self.paths for path_ref in group_ref.paths):
+                return False
+        return True
