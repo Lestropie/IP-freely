@@ -6,6 +6,7 @@ import json
 import pathlib
 import sys
 from ipfreely import BIDSError
+from ipfreely import InheritanceError
 from ipfreely.evaluate import evaluate
 from ipfreely.graph import Graph
 from ipfreely.filepath import BIDSFilePath
@@ -15,6 +16,7 @@ from ipfreely.ruleset import RULESETS
 from ipfreely.utils.get import datafiles_for_metafile
 from ipfreely.utils.get import metafiles_for_datafile
 from ipfreely.utils.keyvalues import find_overrides
+from ipfreely.utils.keyvalues import has_override
 from ipfreely.utils.metadata import load_metadata
 
 # Run through a batch of tests,
@@ -216,6 +218,28 @@ DATASETS = {
 }
 
 
+# There are some potential IP issues for which it is not reasonable
+#   for the functions that just query a single file in the dataset individually
+#   to be able to detect;
+# In those scenarios, skip just the testing of those functions
+# Any additions to this list need to be accompanied by justification
+DATASETS_SKIP_FN_TESTS = (
+    # A metadata file that is applicable to a data file by name,
+    #   but it is not within the parents of that data file
+    # Detecting this would require scouring the entire dataset for such candidates
+    #   for every individual file query
+    "ip170badrelpath",
+    "ip112badmetapathe2v1",
+    # A data file and a metadata file are an exclusive pairing,
+    #   ie. each is only associated to the other,
+    #   yet they are not a sidecar pair.
+    # Detecting this would mean running the query for the file matched.
+    # This wouldn't be terribly expensive,
+    #   but it would only be done for the purpose of this validation
+    "ipexclnonsc",
+)
+
+
 def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
     graph_path = bids_dir / "sourcedata" / "ip_graph.json"
     if graph_path.is_file():
@@ -257,7 +281,9 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
     return True
 
 
-def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutcome:
+def run_test_fromgraph(
+    bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset
+) -> TestOutcome:
     return_code = evaluate(bids_dir, ruleset, graph, warnings_as_errors=False)
     if return_code != ReturnCodes.SUCCESS:
         return TestOutcome.violation
@@ -267,23 +293,47 @@ def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutc
         == ReturnCodes.WARNINGS_AS_ERRORS
         else TestOutcome.success
     )
-    # TODO For specifically testing,
-    #   should ensure that operation of individual functions within utils module
-    #   arrive at the same outcomes as does construction of the full graph
-    # TODO Ideally they should also be capable of detecting the same IP violations
-    # I suspect however that there will be some issues that the individual functions can't catch...
     return outcome
+
+
+def run_test_fromfns(
+    bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset
+) -> TestOutcome:
+    try:
+        outcome = TestOutcome.success
+        for datapath in graph.m4d:
+            metafiles = metafiles_for_datafile(bids_dir, datapath, ruleset=ruleset.name)
+            if ".json" in metafiles and has_override(bids_dir, metafiles[".json"]):
+                outcome = TestOutcome.warning
+        for metapath in graph.d4m:
+            datapaths = datafiles_for_metafile(bids_dir, metapath, ruleset=ruleset.name)
+            if not datapaths:
+                if not ruleset.permit_nonsidecar:
+                    return TestOutcome.violation
+                outcome = TestOutcome.warning
+        return outcome
+    except InheritanceError:
+        return TestOutcome.violation
 
 
 def run_dataset_tests(
     bids_dir: pathlib.Path, graph: Graph, tests: list[Test]
-) -> list[tuple[Test, TestOutcome]]:
-    mismatches: list[tuple[Test, TestOutcome]] = []
+) -> list[tuple[str, TestOutcome, TestOutcome]]:
+    mismatches: list[tuple[str, TestOutcome, TestOutcome]] = []
     for test in tests:
         ruleset: Ruleset = RULESETS[test.testname]
-        outcome = run_test(bids_dir, graph, ruleset)
-        if outcome != test.expectation:
-            mismatches.append((test, outcome))
+        outcome_fromgraph = run_test_fromgraph(bids_dir, graph, ruleset)
+        if outcome_fromgraph != test.expectation:
+            mismatches.append(
+                (f"{test.testname}_fromgraph", test.expectation, outcome_fromgraph)
+            )
+        if bids_dir.name in DATASETS_SKIP_FN_TESTS:
+            continue
+        outcome_fromfns = run_test_fromfns(bids_dir, graph, ruleset)
+        if outcome_fromfns != test.expectation:
+            mismatches.append(
+                (f"{test.testname}_fromfns", test.expectation, outcome_fromfns)
+            )
     return mismatches
 
 
@@ -308,7 +358,7 @@ def functions_match_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
 def run_datasets(examples_dir: pathlib.Path) -> int:
     # For any test for which the outcome does not match expectation,
     #   store the test along with the actual outcome
-    mismatches: list[tuple[str, Test, TestOutcome]] = []
+    mismatches: list[tuple[str, str, TestOutcome, TestOutcome]] = []
     for dataset, tests in DATASETS.items():
         bids_dir = examples_dir / dataset
         if not bids_dir.is_dir():
@@ -316,13 +366,17 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
         graph = Graph(bids_dir)
         dataset_mismatches = run_dataset_tests(bids_dir, graph, tests)
         for dataset_mismatch in dataset_mismatches:
-            mismatches.append((dataset, dataset_mismatch[0], dataset_mismatch[1]))
+            assert dataset_mismatch[1] != dataset_mismatch[2]
+            mismatches.append(
+                (dataset, dataset_mismatch[0], dataset_mismatch[1], dataset_mismatch[2])
+            )
         graph.prune()
         if not check_dataset_graph(bids_dir, graph):
             mismatches.append(
                 (
                     dataset,
-                    Test("verify_graph", TestOutcome.success),
+                    "verify_graph",
+                    TestOutcome.success,
                     TestOutcome.failure,
                 )
             )
@@ -330,7 +384,8 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
             mismatches.append(
                 (
                     dataset,
-                    Test("get_functions", TestOutcome.success),
+                    "get_functions",
+                    TestOutcome.success,
                     TestOutcome.failure,
                 )
             )
@@ -352,9 +407,9 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
         for mismatch in mismatches:
             sys.stderr.write(
                 f"    Dataset: {mismatch[0]},"
-                f" test: {mismatch[1].testname},"
-                f" expected {outcome2str(mismatch[1].expectation)};"
-                f" actual outcome {outcome2str(mismatch[2])}\n"
+                f" test: {mismatch[1]},"
+                f" expected {outcome2str(mismatch[2])};"
+                f" actual outcome {outcome2str(mismatch[3])}\n"
             )
         return 1
     return 0

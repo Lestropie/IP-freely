@@ -7,6 +7,8 @@ from ..graph import Graph
 
 
 def load_keyvalues(bids_dir: pathlib.Path, jsonfiles: BIDSFilePathList) -> dict[str]:
+    if any(jsonfile.extension != ".json" for jsonfile in jsonfiles):
+        raise TypeError("utils.keyvalues.has_override() expects list of JSON files")
     result: dict[str] = {}
     for jsonfile in jsonfiles:
         try:
@@ -17,6 +19,25 @@ def load_keyvalues(bids_dir: pathlib.Path, jsonfiles: BIDSFilePathList) -> dict[
         for key, value in json_data.items():
             result[key] = value
     return result
+
+
+def has_override(bids_dir: pathlib.Path, jsonfiles: BIDSFilePathList) -> bool:
+    if any(jsonfile.extension != ".json" for jsonfile in jsonfiles):
+        raise TypeError("utils.keyvalues.has_override() expects list of JSON files")
+    if len(jsonfiles) < 2:
+        return False
+    data: set[str] = set()
+    for jsonfile in jsonfiles:
+        try:
+            with open(bids_dir / jsonfile.relpath, "r", encoding="utf-8") as f:
+                json_data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise BIDSError(f"Malformed key-value metadata file {jsonfile}") from e
+        for key in json_data.keys():
+            if key in data:
+                return True
+            data.add(key)
+    return False
 
 
 # Returns a dictionary,

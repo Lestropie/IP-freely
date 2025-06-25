@@ -99,7 +99,7 @@ def metafiles_for_datafile(
     # Ensure that the IP was not violated
     #   in the process of ascribing these metadata file paths to this data file
     if ruleset is not None:
-        for extension, metapaths in initial_result:
+        for extension, metapaths in initial_result.items():
             if metapaths.has_order_ambiguity(
                 ruleset.json_inheritance_within_dir
                 if extension == ".json"
@@ -108,22 +108,22 @@ def metafiles_for_datafile(
                 raise InheritanceError
             if not ruleset.permit_multiple_metadata_per_data and len(metapaths) > 1:
                 raise InheritanceError
-        if not ruleset.permit_multiple_data_per_metadata:
-            for metapath in metapaths:
-                d4m = datafiles_for_metafile(bids_dir, metapath, ruleset=None)
-                if not (len(d4m) == 1 and d4m[0] == datafile):
-                    raise InheritanceError
-        if not ruleset.permit_nonsidecar and not (
-            len(metapaths) == 1 and is_sidecar_pair(datafile, metapaths[0])
-        ):
-            raise InheritanceError
-        if ruleset.meta_path_check == MetaPathCheck.ver112:
-            for metapath in metapaths:
-                if metapath.entities and metapath.entities[0].key == "sub":
-                    if len(metapath.relpath.parents) == 1:
+            if not ruleset.permit_multiple_data_per_metadata:
+                for metapath in metapaths:
+                    d4m = datafiles_for_metafile(bids_dir, metapath, ruleset=None)
+                    if not (len(d4m) == 1 and d4m[0] == datafile):
                         raise InheritanceError
-                elif len(metapath.relpath.parents) != 1:
-                    raise InheritanceError
+            if not ruleset.permit_nonsidecar and not (
+                len(metapaths) == 1 and is_sidecar_pair(datafile, metapaths[0])
+            ):
+                raise InheritanceError
+            if ruleset.meta_path_check == MetaPathCheck.ver112:
+                for metapath in metapaths:
+                    if metapath.entities and metapath.entities[0].key == "sub":
+                        if len(metapath.relpath.parents) == 1:
+                            raise InheritanceError
+                    elif len(metapath.relpath.parents) != 1:
+                        raise InheritanceError
         # Rules in 1.7.0 regarding relative paths between data and metadata files
         #   too expensive to be checking for each file individually here
 
@@ -223,14 +223,14 @@ def datafiles_for_metafile(
         if (
             ruleset is not None
             and not ruleset.permit_multiple_metadata_per_data
-            and len(m4d) != 1
+            and not (isinstance(m4d, BIDSFilePath) or len(m4d) == 1)
         ):
             raise InheritanceError
         if isinstance(m4d, BIDSFilePath):
             if m4d == metafile:
                 result.append(datapath)
         elif isinstance(m4d, BIDSFilePathList):
-            if any(filepath == datapath for filepath in m4d):
+            if any(filepath == metafile for filepath in m4d):
                 result.append(datapath)
         else:
             assert False

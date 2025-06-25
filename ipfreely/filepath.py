@@ -52,6 +52,7 @@ class BIDSFilePath:
         #   formed by the entities and suffix
         while pathlib.PurePath(self.stem).suffix:
             self.stem = pathlib.PurePath(self.stem).stem
+        self.stem = str(self.stem)
         self.extension = "".join(self.relpath.suffixes)
         split_stem = self.stem.split("_")
         if "-" in split_stem[-1]:
@@ -78,7 +79,7 @@ class BIDSFilePath:
     def is_metadata(self) -> bool:
         return self.extension in EXTENSIONS_STR
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: "BIDSFilePath") -> bool:
         return self.relpath == other.relpath
 
     def __hash__(self):

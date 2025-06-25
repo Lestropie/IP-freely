@@ -177,3 +177,5 @@ What is important to note in its current implementation is that,
 at the end of the terminal output,
 the script does not report any discordances between the expected outcomes of validation tests
 and the expectations that are manually pre-programmed.
+Note that the test data and the tests on this repository
+are not yet robustly version-matched.
