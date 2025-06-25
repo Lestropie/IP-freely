@@ -27,13 +27,16 @@ It is however capable of doing the following:
 -   Show the impact that different prospective "rule sets" have
     on whether different dataset arrangements / contents are permissible.
 
+-   Provide functions for accessing metadata from within a BIDS dataset
+    that is maximally conformant with the Inheritance Principle.
+
 ## Usage
 
 ### API for BIDS parsing
 
 The following are the most likely access points for programmers
 looking to use this package for query metadata information in BIDS datasets
-(note: may be subject to change):
+(note: function names may be subject to change):
 
 -   Function `ipfreely.utils.metafiles_for_datafile()` yields the set of metadata files
     to be associated with a given data file.
@@ -154,3 +157,23 @@ Note that some command-line options described below modulate this behaviour.
     stating that such overloads are RECOMMENDED to avoid),
     and therefore escalating those warnings to errors allows for the presence of such
     to be detected based on the command return code.
+
+### Testing
+
+File `test.py` runs a large number of tests for verifying that the software
+interpretation of the Inheritance Principle matches expectation.
+These tests cover a broad range of test datasets
+that exemplify various complex dataset configurations,
+and additionally test multiple Inheritance Principle rulesets.
+The input filesystem path to this command must, at time of writing,
+be a specific branch on a specific fork of the `bids-specification/bids-examples` repository,
+which can be found at:
+https://github.com/Lestropie/bids-examples/pull/1.
+The test command will produce a large amount of text at the terminal,
+as each individual test currently simply writes all information to `stderr`,
+regardless of whether it is just reporting information of potential interest
+or error text (and indeed many tests involve ensuring that such errors are encountered).
+What is important to note in its current implementation is that,
+at the end of the terminal output,
+the script does not report any discordances between the expected outcomes of validation tests
+and the expectations that are manually pre-programmed.
