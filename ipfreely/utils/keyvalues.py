@@ -1,12 +1,12 @@
 import json
 import pathlib
-import sys
 from .. import BIDSError
 from ..filepath import BIDSFilePath
+from ..filepath import BIDSFilePathList
 from ..graph import Graph
 
 
-def load_keyvalues(bids_dir: pathlib.Path, jsonfiles: list[BIDSFilePath]) -> dict[str]:
+def load_keyvalues(bids_dir: pathlib.Path, jsonfiles: BIDSFilePathList) -> dict[str]:
     result: dict[str] = {}
     for jsonfile in jsonfiles:
         try:

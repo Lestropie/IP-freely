@@ -1,22 +1,36 @@
 import os
 import pathlib
+import sys
 from .. import InheritanceError
 from .. import EXCLUSIONS
 from ..filepath import BIDSFilePath
+from ..filepath import BIDSFilePathList
 from ..extensions import EXTENSIONS
 from ..extensions import EXTENSIONS_STR
 from ..extensions import InheritanceBehaviour
-from ..ruleset import Ruleset
+from ..ruleset import MetaPathCheck
+from ..ruleset import RULESETS
 from .applicability import is_applicable
+from .sidecar import is_sidecar_pair
 
 
 def metafiles_for_datafile(
     bids_dir: pathlib.Path, datafile: BIDSFilePath, **kwargs
-) -> dict[str, list[BIDSFilePath]]:
+) -> dict[str, BIDSFilePathList]:
 
     single_extension = kwargs.pop("extension", None)
     extensions = kwargs.pop("extensions", None)
-    assert not (single_extension is not None and extensions is not None)
+    prune = bool(kwargs.pop("prune", True))
+    ruleset = kwargs.pop("ruleset", None)
+    if kwargs:
+        raise TypeError(
+            "Unrecognised kwargs to metafiles_for_datafile():" f" {kwargs.keys()}"
+        )
+    if single_extension is not None and extensions is not None:
+        raise TypeError(
+            'Do not specify both "extension=" and "extensions="'
+            " to metafiles_for_datafile()"
+        )
     if single_extension is not None:
         assert single_extension in EXTENSIONS_STR
         extensions = {single_extension: EXTENSIONS[single_extension]}
@@ -25,6 +39,11 @@ def metafiles_for_datafile(
     else:
         assert all(item in EXTENSIONS_STR for item in extensions)
         extensions = dict([item, EXTENSIONS[item]] for item in extensions)
+    if ruleset is not None:
+        try:
+            ruleset = RULESETS[ruleset]
+        except KeyError:
+            raise TypeError("Invalid IP ruleset nominated for metafiles_for_datafile()")
 
     # Generate a list of directories in which the search will occur
     # This is all parents of the data file,
@@ -32,13 +51,13 @@ def metafiles_for_datafile(
     #   but does not include anything beyond the BIDS root directory
     parents = [bids_dir / parent for parent in datafile.relpath.parents]
 
-    all_matches: dict[str, list[BIDSFilePath]] = {}
+    initial_result: dict[str, BIDSFilePathList] = {}
 
     # Start at the highest level in the filesystem hierarchy
     for parent in reversed(parents):
 
         # Get all matches just at this level of the filesystem hierarchy
-        dir_matches: dict[str, list[BIDSFilePath]] = {}
+        dir_matches: dict[str, BIDSFilePathList] = {}
 
         # Get list of files present in this directory
         for filename in parent.iterdir():
@@ -69,19 +88,88 @@ def metafiles_for_datafile(
         for extension, filepaths in dir_matches.items():
             # Resolve the set of matches found that this filesystem hierarchy level
             #   with the set of matches found at all levels
-            if extension in all_matches:
-                all_matches[extension].extend(sorted(filepaths))
+            if extension in initial_result:
+                initial_result[extension].extend(BIDSFilePathList(sorted(filepaths)))
             else:
-                all_matches[extension] = sorted(filepaths)
+                initial_result[extension] = BIDSFilePathList(sorted(filepaths))
 
-    return all_matches
+    # Ensure that the IP was not violated
+    #   in the process of ascribing these metadata file paths to this data file
+    if ruleset is not None:
+        for extension, metapaths in initial_result:
+            if metapaths.has_order_ambiguity(
+                ruleset.json_inheritance_within_dir
+                if extension == ".json"
+                else ruleset.nonjson_inheritance_within_dir
+            ):
+                raise InheritanceError
+            if not ruleset.permit_multiple_metadata_per_data and len(metapaths) > 1:
+                raise InheritanceError
+        if not ruleset.permit_multiple_data_per_metadata:
+            for metapath in metapaths:
+                d4m = datafiles_for_metafile(bids_dir, metapath, ruleset=None)
+                if not (len(d4m) == 1 and d4m[0] == datafile):
+                    raise InheritanceError
+        if not ruleset.permit_nonsidecar and not (
+            len(metapaths) == 1 and is_sidecar_pair(datafile, metapaths[0])
+        ):
+            raise InheritanceError
+        if ruleset.meta_path_check == MetaPathCheck.ver112:
+            for metapath in metapaths:
+                if metapath.entities and metapath.entities[0].key == "sub":
+                    if len(metapath.relpath.parents) == 1:
+                        raise InheritanceError
+                elif len(metapath.relpath.parents) != 1:
+                    raise InheritanceError
+        # Rules in 1.7.0 regarding relative paths between data and metadata files
+        #   too expensive to be checking for each file individually here
+
+    if not prune:
+        return initial_result
+    result: dict[str] = {}
+    for extension, metapaths in initial_result.items():
+        if (
+            EXTENSIONS[extension].inheritance_behaviour
+            == InheritanceBehaviour.forbidden
+        ):
+            if len(metapaths) != 1:
+                raise InheritanceError
+            result[extension] = metapaths[0]
+        elif (
+            EXTENSIONS[extension].inheritance_behaviour == InheritanceBehaviour.nearest
+        ):
+            result[extension] = metapaths[-1]
+        elif EXTENSIONS[extension].inheritance_behaviour == InheritanceBehaviour.merge:
+            result[extension] = metapaths
+        else:
+            assert False
+    return result
 
 
 def datafiles_for_metafile(
-    bids_dir: pathlib.Path, metafile: BIDSFilePath, ruleset: Ruleset
-) -> list[BIDSFilePath]:
+    bids_dir: pathlib.Path, metafile: BIDSFilePath, **kwargs
+) -> BIDSFilePathList:
 
-    initial_result: list[BIDSFilePath] = []
+    prune = bool(kwargs.pop("prune", True))
+    ruleset = kwargs.pop("ruleset", None)
+    if kwargs:
+        raise TypeError(
+            "Unrecognised kwargs to datafiles_for_metafile():" f" {kwargs.keys()}"
+        )
+    if ruleset is not None:
+        try:
+            ruleset = RULESETS[ruleset]
+        except KeyError:
+            raise TypeError("Invalid IP ruleset nominated for metafiles_for_datafile()")
+
+    if ruleset is not None and ruleset.meta_path_check == MetaPathCheck.ver112:
+        if metafile.entities and metafile.entities[0].key == "sub":
+            if len(metafile.relpath.parents) == 1:
+                raise InheritanceError
+        elif len(metafile.relpath.parents) != 1:
+            raise InheritanceError
+
+    initial_result: BIDSFilePathList = []
     # When comparing the entities of a data file to those of this metadata file,
     #   want to be able to quickly and efficiently check whether the corresponding
     #   entity is present in the metadata file,
@@ -100,40 +188,53 @@ def datafiles_for_metafile(
             datafile = BIDSFilePath(bids_dir, pathlib.Path(root, item))
             if datafile.extension in EXTENSIONS_STR:
                 continue
-            # Metadata file does not apply to this data file if:
-            # - Metadata file contains a suffix, and it doesn't match the data file
-            # - Data file contains any entities that are *present* in the metadata file
-            #   but for which the value doesn't match
-            if metafile.suffix is not None and datafile.suffix != metafile.suffix:
-                continue
-            if any(
-                entity.key in metafile_entities_dict
-                and entity.value != metafile_entities_dict[entity.key]
-                for entity in datafile.entities
-            ):
+            if not is_applicable(datafile, metafile):
                 continue
             initial_result.append(datafile)
 
-    # Perform further pruning of set of data files if necessary
+    # Ensure that the IP was not violated
+    #   in the process of ascribing these metadata files to this data file
     if (
-        EXTENSIONS[metafile.extension].inheritance_behaviour
+        ruleset is not None
+        and (
+            not ruleset.permit_multiple_metadata_per_data
+            or not ruleset.permit_nonsidecar
+        )
+        and len(initial_result) > 1
+    ):
+        raise InheritanceError
+
+    if ruleset is None and (
+        not prune
+        or EXTENSIONS[metafile.extension].inheritance_behaviour
         == InheritanceBehaviour.merge
     ):
         return initial_result
-    result: list[BIDSFilePath] = []
-    for candidate in initial_result:
+
+    result: BIDSFilePathList = []
+    for datapath in initial_result:
         try:
-            reverse_mapping = metafiles_for_datafile(bids_dir, candidate, ruleset)
+            m4d = metafiles_for_datafile(bids_dir, datapath, ruleset=None)
         except InheritanceError as e:
             raise InheritanceError(
                 "Error in finalising association"
                 f" of metadata file {metafile}"
-                f" with data file {candidate}"
+                f" with data file {datapath}"
             ) from e
-        assert metafile.extension in reverse_mapping
-        if any(
-            filepath == candidate for filepath in reverse_mapping[metafile.extension]
+        assert metafile.extension in m4d
+        m4d = m4d[metafile.extension]
+        if (
+            ruleset is not None
+            and not ruleset.permit_multiple_metadata_per_data
+            and len(m4d) != 1
         ):
-            result.append(candidate)
-
+            raise InheritanceError
+        if isinstance(m4d, BIDSFilePath):
+            if m4d == metafile:
+                result.append(datapath)
+        elif isinstance(m4d, BIDSFilePathList):
+            if any(filepath == datapath for filepath in m4d):
+                result.append(datapath)
+        else:
+            assert False
     return result

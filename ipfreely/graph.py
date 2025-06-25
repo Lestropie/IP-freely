@@ -6,6 +6,7 @@ from . import EXCLUSIONS
 from .extensions import EXTENSIONS
 from .extensions import InheritanceBehaviour
 from .filepath import BIDSFilePath
+from .filepath import BIDSFilePathList
 from .utils.get import metafiles_for_datafile
 
 
@@ -16,11 +17,11 @@ class Graph:
         # The resulting dictionary indexes by metadata file extension:
         #   the contents of each of those is then a list of metadata file paths
         #   that are associated with that data file
-        self.m4d: dict[BIDSFilePath, dict[str, list[BIDSFilePath]]] = {}
+        self.m4d: dict[BIDSFilePath, dict[str, BIDSFilePathList]] = {}
         # "d4m" is a lookup by metadata file path
         # The contents of each of those fields is a list of data file paths
         #   for which that metadata file is applicable
-        self.d4m: dict[BIDSFilePath, list[BIDSFilePath]] = {}
+        self.d4m: dict[BIDSFilePath, BIDSFilePathList] = {}
         for root, _, files in os.walk(bids_dir):
             rootpath = pathlib.Path(root)
             if rootpath.name in EXCLUSIONS:
@@ -35,7 +36,9 @@ class Graph:
                         self.d4m[filepath] = []
                     continue
                 # Default: Function accesses all metadata file extensions
-                all_metapaths = metafiles_for_datafile(bids_dir, filepath)
+                all_metapaths = metafiles_for_datafile(
+                    bids_dir, filepath, prune=False, ruleset=None
+                )
                 self.m4d[filepath] = all_metapaths
                 # Add the inverse mapping
                 for _, metapaths in all_metapaths.items():
@@ -50,11 +53,11 @@ class Graph:
     #   as it needs to be possible to detect occurrences of inheritance clashes
     #   in case that would be a violation of the ruleset
     # This also changes eg. m4d[datapath][".bvec"]
-    #   to be a BIDSFilePath rather than list[BIDSFilePath]
+    #   to be a BIDSFilePath rather than BIDSFilePathList
     def prune(self) -> None:
         # Identify data file - metadata extension associations
         #   for which only the last metadata file is applicable
-        new_m4d: dict[BIDSFilePath, dict[str, list[BIDSFilePath]]] = {}
+        new_m4d: dict[BIDSFilePath, dict[str, BIDSFilePathList]] = {}
         # All metadata files need to remain in this mapping,
         #   even if after pruning it does not map to any data files
         self.d4m = {metapath: [] for metapath in self.d4m}

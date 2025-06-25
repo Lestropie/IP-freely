@@ -30,7 +30,6 @@ def load_metadata(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
             if extension == ".json":
                 datafile_metadata[".json"] = load_keyvalues(bids_dir, metapaths)
             elif extension == ".tsv":
-
                 datafile_metadata[extension] = load_tsv(
                     bids_dir, nearest_metapath(metapaths)
                 )

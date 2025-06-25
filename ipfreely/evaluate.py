@@ -3,6 +3,7 @@ import sys
 from .extensions import EXTENSIONS
 from .extensions import InheritanceBehaviour
 from .filepath import BIDSFilePath
+from .filepath import BIDSFilePathList
 from .graph import Graph
 from .returncodes import ReturnCodes
 from .ruleset import InheritanceWithinDir
@@ -20,6 +21,9 @@ def evaluate(
 
     export_overrides_path = kwargs.pop("export_overrides", None)
     warnings_as_errors = kwargs.pop("warnings_as_errors", None)
+    # TODO Is it possible to include a kwarg here
+    #   that would trigger testing of the individual get functions?
+    # This might only be possible with custom Exceptions...
     if kwargs:
         raise TypeError(
             "Unrecognised kwargs passed to ipfreely.evaluate():" f"{kwargs}"
@@ -29,57 +33,14 @@ def evaluate(
     any_inheritance: bool = False
     any_warning: bool = False
 
-    # Define some functions to be used during analysis of the graph
-    def has_unambiguous_nearest(metafiles: list[BIDSFilePath]) -> bool:
-        return (
-            len(metafiles) == 1
-            or len(metafiles[-2].relpath.parents) < len(metafiles[-1].relpath.parents)
-            or bool(metafiles[-2].suffix) != bool(metafiles[1].suffix)
-            or len(metafiles[-2].entities) < len(metafiles[1].entities)
-        )
-
-    def has_withindir_clash(
-        metafiles: list[BIDSFilePath], inheritance_within_dir: InheritanceWithinDir
-    ) -> bool:
-        if inheritance_within_dir == InheritanceWithinDir.any:
-            return False
-        # Checking whether requirements relating to the number of /
-        #   capability to unambiguously sort metadata files
-        #   within each filesystem hierarchy level individually is satisfied
-        # First, split the paths into different lists:
-        #   the key dictating which list each entry goes into
-        #   is based on the number of parents,
-        #   which is an adequate proxy for unique directory of residence in this instance
-        by_parent_count: dict[int, list[BIDSFilePath]] = {}
-        for metafile in metafiles:
-            parent_count = len(metafile.relpath.parents)
-            if parent_count in by_parent_count:
-                by_parent_count[parent_count].append(metafile)
-            else:
-                by_parent_count[parent_count] = [metafile]
-        if inheritance_within_dir == InheritanceWithinDir.unique:
-            return any(len(item) > 1 for item in by_parent_count.values())
-        assert inheritance_within_dir == InheritanceWithinDir.ordered
-        for metafiles_within_dir in by_parent_count.values():
-            if len(metafiles_within_dir) == 1:
-                continue
-            # Quick way to determine if any pair of metadata files
-            #   contain the same number of entities:
-            # Generate a set containing all of the unique filename entity counts,
-            #   and make sure that there are as many counts as there are files
-            if len(
-                set(len(metafile.entities) for metafile in metafiles_within_dir)
-            ) < len(metafiles_within_dir):
-                return True
-        return False
-
     multiinheritance_count_m4d: int = 0
-    forbidden_multiinheritance: list[BIDSFilePath] = []
-    invalid_nearest_inheritance: list[BIDSFilePath] = []
-    invalid_multiinheritance_within_dir: list[BIDSFilePath] = []
+    forbidden_multiinheritance: BIDSFilePathList = []
+    invalid_nearest_inheritance: BIDSFilePathList = []
+    invalid_multiinheritance_within_dir: BIDSFilePathList = []
     for datapath, by_extension in graph.m4d.items():
         datapath_forbidden_multiinheritance: bool = False
         datapath_invalid_nearest_inheritance: bool = False
+        # TODO New function that sets this isn't quite faithful to description
         datapath_invalid_multiinheritance_within_dir: bool = False
         for extension, metafiles in by_extension.items():
 
@@ -98,10 +59,10 @@ def evaluate(
             # For some metadata types, only data from the nearest match is loaded;
             #   in these cases, it needs to be possible to *unambiguously* select
             #   which metadata file to load from
-            elif EXTENSIONS[
-                extension
-            ].inheritance_behaviour == InheritanceBehaviour.nearest and not has_unambiguous_nearest(
-                metafiles
+            elif (
+                EXTENSIONS[extension].inheritance_behaviour
+                == InheritanceBehaviour.nearest
+                and not metafiles.has_unambiguous_nearest()
             ):
                 datapath_invalid_nearest_inheritance = True
 
@@ -116,7 +77,7 @@ def evaluate(
                 if extension == ".json"
                 else ruleset.nonjson_inheritance_within_dir
             )
-            if has_withindir_clash(metafiles, inheritance_within_dir):
+            if metafiles.has_order_ambiguity(inheritance_within_dir):
                 datapath_invalid_multiinheritance_within_dir = True
 
         # Finished looping over metadata file extensions for this data file
@@ -187,8 +148,8 @@ def evaluate(
 
     multiinheritance_count_d4m: int = 0
     non_sidecar_exclusive_pairs: list[tuple[BIDSFilePath, BIDSFilePath]] = []
-    inapplicable_metafiles: list[BIDSFilePath] = []
-    bad_metadata_path: dict[BIDSFilePath, list[BIDSFilePath]] = {}
+    inapplicable_metafiles: BIDSFilePathList = []
+    bad_metadata_path: dict[BIDSFilePath, BIDSFilePathList] = {}
     for metapath, datapaths in graph.d4m.items():
         if len(datapaths) > 1:
             multiinheritance_count_d4m += 1
@@ -290,11 +251,12 @@ def evaluate(
             " found to match data files in name but not in path: ["
         )
         for metapath, datapaths in bad_metadata_path.items():
-            sys.stderr.write(
-                f"\n  {metapath}"
-                f"({len(datapaths)} data"
-                f"{'file' if len(datapaths) == 1 else 'files'})"
-            )
+            sys.stderr.write(f"\n  {metapath}")
+            if datapaths:
+                sys.stderr.write(
+                    f"({len(datapaths)} data"
+                    f"{'file' if len(datapaths) == 1 else 'files'})"
+                )
         sys.stderr.write("]\n")
         return_code = ReturnCodes.IP_VIOLATION
 

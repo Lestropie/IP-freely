@@ -8,9 +8,12 @@ import sys
 from ipfreely import BIDSError
 from ipfreely.evaluate import evaluate
 from ipfreely.graph import Graph
+from ipfreely.filepath import BIDSFilePath
 from ipfreely.returncodes import ReturnCodes
 from ipfreely.ruleset import Ruleset
 from ipfreely.ruleset import RULESETS
+from ipfreely.utils.get import datafiles_for_metafile
+from ipfreely.utils.get import metafiles_for_datafile
 from ipfreely.utils.keyvalues import find_overrides
 from ipfreely.utils.metadata import load_metadata
 
@@ -30,7 +33,7 @@ TestOutcome = Enum("TestOutcome", "success warning violation failure")
 
 @dataclass
 class Test:
-    ruleset: str
+    testname: str
     expectation: TestOutcome
 
 
@@ -258,7 +261,7 @@ def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutc
     return_code = evaluate(bids_dir, ruleset, graph, warnings_as_errors=False)
     if return_code != ReturnCodes.SUCCESS:
         return TestOutcome.violation
-    return (
+    outcome = (
         TestOutcome.warning
         if evaluate(bids_dir, ruleset, graph, warnings_as_errors=True)
         == ReturnCodes.WARNINGS_AS_ERRORS
@@ -267,6 +270,9 @@ def run_test(bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset) -> TestOutc
     # TODO For specifically testing,
     #   should ensure that operation of individual functions within utils module
     #   arrive at the same outcomes as does construction of the full graph
+    # TODO Ideally they should also be capable of detecting the same IP violations
+    # I suspect however that there will be some issues that the individual functions can't catch...
+    return outcome
 
 
 def run_dataset_tests(
@@ -274,11 +280,29 @@ def run_dataset_tests(
 ) -> list[tuple[Test, TestOutcome]]:
     mismatches: list[tuple[Test, TestOutcome]] = []
     for test in tests:
-        ruleset: Ruleset = RULESETS[test.ruleset]
+        ruleset: Ruleset = RULESETS[test.testname]
         outcome = run_test(bids_dir, graph, ruleset)
         if outcome != test.expectation:
             mismatches.append((test, outcome))
     return mismatches
+
+
+def functions_match_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
+    # Note that the graph has already been pruned
+    f2graph: dict = {}
+    for datapath in graph.m4d.keys():
+        f2graph[str(datapath)] = {}
+        from_fn = metafiles_for_datafile(bids_dir, datapath, prune=True, ruleset=None)
+        for extension, metapaths in from_fn.items():
+            f2graph[str(datapath)][extension] = (
+                str(metapaths)
+                if isinstance(metapaths, BIDSFilePath)
+                else list(map(str, metapaths))
+            )
+    for metapath in graph.d4m.keys():
+        from_fn = datafiles_for_metafile(bids_dir, metapath, prune=True, ruleset=None)
+        f2graph[str(metapath)] = list(map(str, from_fn))
+    return graph == f2graph
 
 
 def run_datasets(examples_dir: pathlib.Path) -> int:
@@ -302,6 +326,14 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
                     TestOutcome.failure,
                 )
             )
+        if not functions_match_graph(bids_dir, graph):
+            mismatches.append(
+                (
+                    dataset,
+                    Test("get_functions", TestOutcome.success),
+                    TestOutcome.failure,
+                )
+            )
 
     if mismatches:
         sys.stderr.write(f"{len(mismatches)} discrepancies in test outcomes:\n")
@@ -320,7 +352,7 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
         for mismatch in mismatches:
             sys.stderr.write(
                 f"    Dataset: {mismatch[0]},"
-                f" ruleset: {mismatch[1].ruleset},"
+                f" test: {mismatch[1].testname},"
                 f" expected {outcome2str(mismatch[1].expectation)};"
                 f" actual outcome {outcome2str(mismatch[2])}\n"
             )

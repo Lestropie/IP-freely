@@ -6,17 +6,67 @@ import os
 import pathlib
 import sys
 from ipfreely.evaluate import evaluate
+from ipfreely.extensions import EXTENSIONS
 from ipfreely.filepath import BIDSError
+from ipfreely.filepath import BIDSFilePath
 from ipfreely.graph import Graph
 from ipfreely.returncodes import ReturnCodes
 from ipfreely.ruleset import RULESETS
+from ipfreely.utils.get import metafiles_for_datafile
+from ipfreely.utils.get import datafiles_for_metafile
+from ipfreely.utils.keyvalues import load_keyvalues
 from ipfreely.utils.metadata import load_metadata
+from ipfreely.utils.metadata import load_numerical_matrix
+from ipfreely.utils.metadata import load_tsv
 
 
 __version__ = open(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "version"),
     encoding="ascii",
 ).read()  # pylint: disable=consider-using-with
+
+
+def graph2json_manual(bids_dir: pathlib.Path, graph: Graph, outpath: str) -> None:
+    data = {}
+    for datapath in graph.m4d.keys():
+        metapaths_by_extension = metafiles_for_datafile(bids_dir, datapath)
+        data[str(datapath)] = {}
+        for extension, metapaths in metapaths_by_extension.items():
+            data[str(datapath)][extension] = (
+                str(metapaths)
+                if isinstance(metapaths, BIDSFilePath)
+                else list(map(str, metapaths))
+            )
+    for metapath in graph.d4m.keys():
+        data[str(metapath)] = list(map(str, datafiles_for_metafile(bids_dir, metapath)))
+    with open(outpath, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
+
+def metadata2json_manual(bids_dir: pathlib.Path, graph: Graph, outpath: str) -> None:
+    data = {}
+    for datapath in graph.m4d.keys():
+        data[str(datapath)] = {}
+        metapaths_by_extension = metafiles_for_datafile(bids_dir, datapath)
+        for extension, metapaths in metapaths_by_extension.items():
+            if extension not in metapaths_by_extension:
+                continue
+            if extension == ".json":
+                data[str(datapath)][".json"] = load_keyvalues(bids_dir, metapaths)
+            elif EXTENSIONS[extension].is_numerical_matrix():
+                data[str(datapath)][extension] = load_numerical_matrix(
+                    bids_dir,
+                    metapaths if isinstance(metapaths, BIDSFilePath) else metapaths[-1],
+                )
+            elif extension == ".tsv":
+                data[str(datapath)][extension] = load_tsv(
+                    bids_dir,
+                    metapaths if isinstance(metapaths, BIDSFilePath) else metapaths[-1],
+                )
+            else:
+                assert False
+    with open(outpath, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
 
 
 def main():
@@ -130,11 +180,13 @@ def main():
 
     if args.graph is not None:
         graph.save(args.graph)
+        # graph2json_manual(bids_dir, graph, args.graph)
 
     if args.metadata is not None:
         data = load_metadata(bids_dir, graph)
         with open(args.metadata, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
+        # metadata2json_manual(bids_dir, graph, args.metadata)
 
     return return_code
 

@@ -1,6 +1,7 @@
 import pathlib
 from . import BIDSError
 from .extensions import EXTENSIONS_STR
+from .ruleset import InheritanceWithinDir
 from .ruleset import Ruleset
 
 
@@ -117,12 +118,47 @@ class BIDSFilePath:
         return self.relpath.__format__(format_spec)
 
 
-def sort(files: list[BIDSFilePath]) -> list[BIDSFilePath]:
-    def first(one: BIDSFilePath, two: BIDSFilePath) -> bool:
-        if two.filepath.parent.is_relative_to(one.filepath.parent):
-            return True
-        if one.filepath.parent.is_relative_to(two.filepath.parent):
-            return False
-        return len(one.entities) < len(two.entities)
+class BIDSFilePathList(list[BIDSFilePath]):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    return sorted(files, key=first)
+    def has_unambiguous_nearest(self) -> bool:
+        return (
+            len(self) == 1
+            or len(self[-2].relpath.parents) < len(self[-1].relpath.parents)
+            or bool(self[-2].suffix) != bool(self[1].suffix)
+            or len(self[-2].entities) < len(self[1].entities)
+        )
+
+    def has_order_ambiguity(self, inheritance_within_dir: InheritanceWithinDir) -> bool:
+        # Checking whether requirements relating to the number of /
+        #   capability to unambiguously sort metadata files
+        #   within each filesystem hierarchy level individually is satisfied
+        if inheritance_within_dir == InheritanceWithinDir.any:
+            return False
+        # First, split the paths into different lists:
+        #   the key dictating which list each entry goes into
+        #   is based on the number of parents,
+        #   which is an adequate proxy for unique directory of residence in this instance
+        by_parent_count: dict[int, BIDSFilePathList] = {}
+        for metafile in self:
+            parent_count = len(metafile.relpath.parents)
+            if parent_count in by_parent_count:
+                by_parent_count[parent_count].append(metafile)
+            else:
+                by_parent_count[parent_count] = [metafile]
+        if inheritance_within_dir == InheritanceWithinDir.unique:
+            return any(len(item) > 1 for item in by_parent_count.values())
+        assert inheritance_within_dir == InheritanceWithinDir.ordered
+        for metafiles_within_dir in by_parent_count.values():
+            if len(metafiles_within_dir) == 1:
+                continue
+            # Quick way to determine if any pair of metadata files
+            #   contain the same number of entities:
+            # Generate a set containing all of the unique filename entity counts,
+            #   and make sure that there are as many counts as there are files
+            if len(
+                set(len(metafile.entities) for metafile in metafiles_within_dir)
+            ) < len(metafiles_within_dir):
+                return True
+        return False
