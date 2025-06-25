@@ -6,7 +6,6 @@ from .filepath import BIDSFilePath
 from .filepath import BIDSFilePathList
 from .graph import Graph
 from .returncodes import ReturnCodes
-from .ruleset import InheritanceWithinDir
 from .ruleset import MetaPathCheck
 from .ruleset import Ruleset
 from .utils.applicability import is_applicable_nameonly
@@ -66,8 +65,8 @@ def evaluate(
             ):
                 datapath_invalid_nearest_inheritance = True
 
-            # Some rulesets forbid more than one applicable metadata file of a given type
-            #   at a single level of the filesystem hierarchy;
+            # Some rulesets forbid more than one applicable metadata file
+            #   of a given type at a single level of the filesystem hierarchy;
             #   others permit for multiple such files
             #   *as long as* they can be uniquely sorted in order
             #   based on the number of entities

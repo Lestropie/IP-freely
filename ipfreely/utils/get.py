@@ -1,6 +1,5 @@
 import os
 import pathlib
-import sys
 from .. import InheritanceError
 from .. import EXCLUSIONS
 from ..filepath import BIDSFilePath
@@ -43,7 +42,11 @@ def metafiles_for_datafile(
         try:
             ruleset = RULESETS[ruleset]
         except KeyError:
-            raise TypeError("Invalid IP ruleset nominated for metafiles_for_datafile()")
+            # pylint: disable=raise-missing-from
+            raise TypeError(
+                f'Invalid IP ruleset "{ruleset}"'
+                " nominated for metafiles_for_datafile()"
+            )
 
     # Generate a list of directories in which the search will occur
     # This is all parents of the data file,
@@ -170,12 +173,6 @@ def datafiles_for_metafile(
             raise InheritanceError
 
     initial_result: BIDSFilePathList = []
-    # When comparing the entities of a data file to those of this metadata file,
-    #   want to be able to quickly and efficiently check whether the corresponding
-    #   entity is present in the metadata file,
-    #   and if so, whether the value is identical;
-    #   pre-converting from list to dict should make these comparisons faster
-    metafile_entities_dict = {entity.key: entity.value for entity in metafile.entities}
     for root, _, files in os.walk(bids_dir / metafile.relpath.parent):
         rootpath = pathlib.Path(root)
         if rootpath.name in EXCLUSIONS:

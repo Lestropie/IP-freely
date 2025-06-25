@@ -140,7 +140,8 @@ class BIDSFilePathList(list[BIDSFilePath]):
         # First, split the paths into different lists:
         #   the key dictating which list each entry goes into
         #   is based on the number of parents,
-        #   which is an adequate proxy for unique directory of residence in this instance
+        #   which is an adequate proxy for unique directory of residence
+        #   in this instance
         by_parent_count: dict[int, BIDSFilePathList] = {}
         for metafile in self:
             parent_count = len(metafile.relpath.parents)

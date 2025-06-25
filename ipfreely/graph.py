@@ -1,7 +1,6 @@
 import json
 import os
 import pathlib
-import sys
 from . import BIDSError
 from . import EXCLUSIONS
 from .extensions import EXTENSIONS
@@ -33,7 +32,7 @@ class Graph:
                     continue
                 filepath = BIDSFilePath(bids_dir, rootpath / item)
                 if filepath.is_metadata():
-                    if not filepath in self.d4m:
+                    if filepath not in self.d4m:
                         self.d4m[filepath] = []
                     continue
                 # Default: Function accesses all metadata file extensions
