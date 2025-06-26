@@ -3,9 +3,9 @@ import argparse
 from dataclasses import dataclass
 from enum import Enum
 import json
+import logging
 import pathlib
 import sys
-from ipfreely import BIDSError
 from ipfreely import InheritanceError
 from ipfreely.evaluate import evaluate
 from ipfreely.graph import Graph
@@ -19,6 +19,8 @@ from ipfreely.utils.get import metafiles_for_datafile
 from ipfreely.utils.keyvalues import find_overrides
 from ipfreely.utils.keyvalues import has_override
 from ipfreely.utils.metadata import load_metadata
+
+logger = logging.getLogger(__name__)
 
 # Run through a batch of tests,
 #   making sure that the outcomes across the set of sample datasets match expectations
@@ -273,7 +275,7 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
             with open(graph_path, "r", encoding="utf-8") as f:
                 ref_graph = json.load(f)
         except json.JSONDecodeError:
-            sys.stderr.write(f'Error reading reference graph JSON "{graph_path}"\n')
+            logger.critical(f'Error reading reference graph JSON "{graph_path}"\n')
             raise
         if not graph == ref_graph:
             return False
@@ -283,7 +285,7 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
             with open(metadata_path, "r", encoding="utf-8") as f:
                 ref_metadata = json.load(f)
         except json.JSONDecodeError:
-            sys.stderr.write(
+            logger.critical(
                 f'Error reading reference metadata JSON "{metadata_path}"\n'
             )
             raise
@@ -296,7 +298,7 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
             with open(overrides_path, "r", encoding="utf-8") as f:
                 ref_overrides = json.load(f)
         except json.JSONDecodeError:
-            sys.stderr.write(
+            logger.critical(
                 f'Error reading reference overrides JSON "{overrides_path}"\n'
             )
             raise
@@ -420,7 +422,7 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
             )
 
     if mismatches:
-        sys.stderr.write(f"{len(mismatches)} discrepancies in test outcomes:\n")
+        logger.error(f"{len(mismatches)} discrepancies in test outcomes:\n")
 
         def outcome2str(outcome: TestOutcome) -> str:
             if outcome is TestOutcome.success:
@@ -434,13 +436,16 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
             assert False
 
         for mismatch in mismatches:
-            sys.stderr.write(
+            logger.error(
                 f"    Dataset: {mismatch[0]},"
                 f" test: {mismatch[1]},"
                 f" expected {outcome2str(mismatch[2])};"
                 f" actual outcome {outcome2str(mismatch[3])}\n"
             )
         return 1
+    else:
+        logger.info("All tests passed")
+        sys.stderr.write("All tests passed\n")
     return 0
 
 
@@ -450,17 +455,23 @@ def main():
         "examples_dir",
         help="A directory containing the BIDS example datasets",
     )
+    parser.add_argument("-l", "--log", help="Write a full log to file")
 
     try:
         args = parser.parse_args()
     except argparse.ArgumentError as e:
-        sys.stderr.write(f"{e}\n")
+        sys.stderr.write(f"Error parsing command-line: {e}\n")
         sys.exit()
 
     examples_dir = pathlib.Path(args.examples_dir)
     if not examples_dir.is_dir():
         sys.stderr.write(f"Input BIDS examples directory {args.examples_dir} not found")
         sys.exit(1)
+
+    logger_kwargs: dict[str] = {"level": logging.CRITICAL}
+    if args.log:
+        logger_kwargs["log"] = args.log
+    logging.basicConfig(**logger_kwargs)
 
     return run_datasets(examples_dir)
 

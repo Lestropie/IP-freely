@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import sys
 from .extensions import EXTENSIONS
@@ -13,6 +14,8 @@ from .utils.applicability import is_applicable_nameonly
 from .utils.keyvalues import find_overrides
 from .utils.keyvalues import save_overrides
 from .utils.sidecar import is_sidecar_pair
+
+logger = logging.getLogger(__name__)
 
 
 def evaluate(
@@ -54,6 +57,11 @@ def evaluate(
                 == InheritanceBehaviour.forbidden
                 and len(metafiles) > 1
             ):
+                logger.debug(
+                    "Forbidden inheritance"
+                    f" of {len(metafiles)} {extension} metafdata files"
+                    f" for data file {datapath}"
+                )
                 datapath_forbidden_multiinheritance = True
 
             # For some metadata types, only data from the nearest match is loaded;
@@ -64,6 +72,11 @@ def evaluate(
                 == InheritanceBehaviour.nearest
                 and not metafiles.has_unambiguous_nearest()
             ):
+                logger.debug(
+                    "Unable to unambiguously choose"
+                    f" nearest {extension} metadata file"
+                    f" for data file {datapath}"
+                )
                 datapath_invalid_nearest_inheritance = True
 
             # Some rulesets forbid more than one applicable metadata file
@@ -78,6 +91,11 @@ def evaluate(
                 else ruleset.nonjson_inheritance_within_dir
             )
             if metafiles.has_order_ambiguity(inheritance_within_dir):
+                logger.debug(
+                    "Ambiguity in order"
+                    f" of {len(metafiles)} {extension} metadata files"
+                    f" applicable to data file {datapath}"
+                )
                 datapath_invalid_multiinheritance_within_dir = True
 
         # Finished looping over metadata file extensions for this data file
@@ -89,10 +107,10 @@ def evaluate(
             invalid_multiinheritance_within_dir.append(datapath)
 
     if forbidden_multiinheritance:
-        sys.stderr.write(
+        logger.critical(
             f"{len(forbidden_multiinheritance)} data files"
             f"with invalid metadata file multi-inheritances:"
-            f" {list(map(str, forbidden_multiinheritance))}\n"
+            f" {list(map(str, forbidden_multiinheritance))}"
         )
         # Return early:
         #   don't report on IP violations
@@ -100,19 +118,19 @@ def evaluate(
         return ReturnCodes.MALFORMED_DATASET
 
     if invalid_nearest_inheritance:
-        sys.stderr.write(
+        logger.error(
             f"{len(forbidden_multiinheritance)} data files"
             f"with ambiguous nearest metadata file:"
-            f" {list(map(str, invalid_nearest_inheritance))}\n"
+            f" {list(map(str, invalid_nearest_inheritance))}"
         )
         return_code = ReturnCodes.IP_VIOLATION
 
     if invalid_multiinheritance_within_dir:
-        sys.stderr.write(
+        logger.error(
             f"{len(invalid_multiinheritance_within_dir)} data files"
             " with invalid multi-file metadata inheritance"
             " within a single filesystem directory:"
-            f" {list(map(str, invalid_multiinheritance_within_dir))}\n"
+            f" {list(map(str, invalid_multiinheritance_within_dir))}"
         )
         return_code = ReturnCodes.IP_VIOLATION
 
@@ -122,10 +140,8 @@ def evaluate(
             for extension, metapaths in by_extension.items():
                 if len(metapaths) > 1:
                     result += (
-                        f"    "
-                        f"{datapath}: {len(metapaths)} {extension} files:\n"
-                        f"        "
-                        f"[{'; '.join(str(metapath) for metapath in metapaths)}]\n"
+                        f"    {datapath}: {len(metapaths)} {extension} files:"
+                        f" [{'; '.join(str(metapath) for metapath in metapaths)}]"
                     )
         return result
 
@@ -137,12 +153,12 @@ def evaluate(
             " of multi-metadata-file inheritance for a single data file"
         )
         if ruleset.permit_multiple_metadata_per_data:
-            sys.stderr.write(f"{instances_found_string}\n")
+            logger.info(f"{instances_found_string}")
         else:
-            sys.stderr.write(
+            logger.error(
                 f"{instances_found_string},"
-                f" which is not permitted under ruleset {ruleset.name}:\n"
-                f"{str_all_multiinheritance_m4d()}\n"
+                f" which is not permitted under ruleset {ruleset.name}:"
+                f" {str_all_multiinheritance_m4d()}"
             )
             return_code = ReturnCodes.IP_VIOLATION
 
@@ -200,78 +216,80 @@ def evaluate(
             " of metadata files applying to multiple data files"
         )
         if ruleset.permit_multiple_data_per_metadata:
-            sys.stderr.write(f"{instances_found_string}\n")
+            logger.info(f"{instances_found_string}")
         else:
-            sys.stderr.write(
+            logger.error(
                 f"{instances_found_string},"
-                f" which is not permitted under ruleset {ruleset.name}:\n"
+                f" which is not permitted under ruleset {ruleset.name}:"
             )
             for metapath, datapaths in graph.d4m.items():
                 if len(datapaths) > 1:
-                    sys.stderr.write(
-                        f"    {metapath}: {len(datapaths)} files:\n"
-                        f"        "
-                        f"[{'; '.join(map(str, datapaths))}]\n"
-                    )
+                    logger.error(f"    {metapath}: {len(datapaths)} files:")
+                    logger.error(f"        [{'; '.join(map(str, datapaths))}]")
             return_code = ReturnCodes.IP_VIOLATION
 
     if non_sidecar_exclusive_pairs:
-        sys.stderr.write(
+        non_sidecar_exclusive_pair_str: str = (
             f"{len(non_sidecar_exclusive_pairs)} exclusive"
-            " data - metadata file pairs that are not sidecars: ["
+            " data - metadata file pairs that are not sidecars: [ "
         )
         for datapath, metapath in non_sidecar_exclusive_pairs:
-            sys.stderr.write(f"\n  {datapath} - {metapath}")
-        sys.stderr.write("]\n")
+            non_sidecar_exclusive_pair_str += f"[{datapath} - {metapath}]"
+        non_sidecar_exclusive_pair_str += " ]"
         if ruleset.permit_nonsidecar:
+            logger.warning(non_sidecar_exclusive_pair_str)
             any_warning = True
         else:
+            logger.error(non_sidecar_exclusive_pair_str)
             return_code = ReturnCodes.IP_VIOLATION
 
     if inapplicable_metafiles:
-        that_string = (
-            "files that are" if len(inapplicable_metafiles) > 1 else "file that is"
-        )
-        sys.stderr.write(
-            f"{len(inapplicable_metafiles)} metadata {that_string}"
-            " not applicable to any data file: ["
+        inapplicable_metafiles_str: str = (
+            f"{len(inapplicable_metafiles)} metadata"
+            f" {'files that are' if len(inapplicable_metafiles) > 1 else 'file that is'}"
+            " not applicable to any data file: [ "
         )
         for metapath in inapplicable_metafiles:
-            sys.stderr.write(f"\n  {metapath}")
-        sys.stderr.write("]\n")
+            inapplicable_metafiles_str += f"{metapath} "
+        inapplicable_metafiles_str += "]"
         if ruleset.permit_nonsidecar:
+            logging.warning(inapplicable_metafiles_str)
             any_warning = True
         else:
+            logging.error(inapplicable_metafiles_str)
             return_code = ReturnCodes.IP_VIOLATION
 
     if bad_metadata_path:
-        sys.stderr.write(
+        bad_metadata_path_str: str = (
             f"{len(bad_metadata_path)} metadata"
             f" {'file' if len(bad_metadata_path) == 1 else 'files'}"
-            " found to match data files in name but not in path: ["
+            " found to match data files in name but not in path: [ "
         )
         for metapath, datapaths in bad_metadata_path.items():
-            sys.stderr.write(f"\n  {metapath}")
+            bad_metadata_path_str += f"{metapath} "
             if datapaths:
-                sys.stderr.write(
+                bad_metadata_path_str += (
                     f"({len(datapaths)} data"
-                    f"{'file' if len(datapaths) == 1 else 'files'})"
+                    f"{'file' if len(datapaths) == 1 else 'files'}) "
                 )
-        sys.stderr.write("]\n")
+        bad_metadata_path_str += "]"
+        logger.error(bad_metadata_path_str)
         return_code = ReturnCodes.IP_VIOLATION
 
     if ruleset.keyvalue_override != KeyvalueOverride.permitted:
         keyval_overrides = find_overrides(bids_dir, graph)
         if keyval_overrides:
-            sys.stderr.write(
+            keyval_overrides_str: str = (
                 f"{len(keyval_overrides)} data"
                 f" {'files have' if len(keyval_overrides) > 1 else 'file has'}"
                 " overridden JSON metadata fields according to Inheritance Principle:"
-                f' [{"; ".join(map(str, keyval_overrides.keys()))}]\n'
+                f' [{"; ".join(map(str, keyval_overrides.keys()))}]'
             )
             if ruleset.keyvalue_override == KeyvalueOverride.warning:
+                logger.warning(keyval_overrides_str)
                 any_warning = True
             elif ruleset.keyvalue_override == KeyvalueOverride.violation:
+                logger.error(keyval_overrides_str)
                 return_code = ReturnCodes.IP_VIOLATION
             else:
                 assert False
@@ -280,13 +298,13 @@ def evaluate(
         save_overrides(export_overrides_path, keyval_overrides)
 
     if not any_inheritance:
-        sys.stderr.write("No manifestations of Inheritance Principle found\n")
+        logger.info("No manifestations of Inheritance Principle found")
 
     if return_code != ReturnCodes.SUCCESS:
         return return_code
 
     if warnings_as_errors and any_warning:
-        sys.stderr.write("Returning non-zero due to treating warnings as errors\n")
+        logger.error("Returning non-zero due to treating warnings as errors")
         return ReturnCodes.WARNINGS_AS_ERRORS
 
     return ReturnCodes.SUCCESS

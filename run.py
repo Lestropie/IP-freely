@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import logging
 import os
 import pathlib
 import sys
@@ -18,6 +19,8 @@ from ipfreely.utils.keyvalues import load_keyvalues
 from ipfreely.utils.metadata import load_metadata
 from ipfreely.utils.metadata import load_numerical_matrix
 from ipfreely.utils.metadata import load_tsv
+
+logger = logging.getLogger(__name__)
 
 __version__ = open(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "version"),
@@ -84,6 +87,7 @@ def main():
         help="Save the full data-metadata filesystem association graph"
         " to a JSON file.",
     )
+    parser.add_argument("-l", "--log", help=("Write a detailed log to file"))
     parser.add_argument(
         "-m",
         "--metadata",
@@ -118,13 +122,18 @@ def main():
     try:
         args = parser.parse_args()
     except argparse.ArgumentError as e:
-        sys.stderr.write(f"{e}\n")
+        sys.stderr.write(f"Error parsing command-line: {e}\n")
         sys.exit()
 
     bids_dir = pathlib.Path(args.bids_dir)
     if not bids_dir.is_dir():
         sys.stderr.write(f"Input BIDS directory {args.bids_dir} not found")
         sys.exit(ReturnCodes.NO_DATASET)
+
+    logger_kwargs: dict[str] = {"level": logging.INFO}
+    if args.log:
+        logger_kwargs["log"] = args.log
+    logging.basicConfig(**logger_kwargs)
 
     if args.ruleset:
         ruleset = RULESETS[args.ruleset]
@@ -163,11 +172,16 @@ def main():
                 )
                 sys.exit(ReturnCodes.NO_RULESET)
             if bids_version < (1, 7):
-                ruleset = RULESETS["1.1.x"]
+                ruleset_str = "1.1.x"
             elif bids_version < (1, 11):
-                ruleset = RULESETS["1.7.x"]
+                ruleset_str = "1.7.x"
             else:
-                ruleset = RULESETS["1.11.x"]
+                ruleset_str = "1.11.x"
+            ruleset = RULESETS[ruleset_str]
+            logger.info(
+                f"For BIDSVersion of {bids_version_string},"
+                f" chose ruleset {ruleset.name}"
+            )
 
     evaluate_kwargs = {}
     if args.overrides is not None:
@@ -179,7 +193,7 @@ def main():
         graph: Graph = Graph(bids_dir)
         return_code: ReturnCodes = evaluate(bids_dir, ruleset, graph, **evaluate_kwargs)
     except BIDSError as e:
-        sys.stderr.write(f"Error parsing BIDS dataset: {e}\n")
+        logger.critical(f"Error parsing BIDS dataset: {e}\n")
         sys.exit(ReturnCodes.MALFORMED_DATASET)
 
     if args.graph is not None:
