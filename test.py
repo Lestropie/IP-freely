@@ -11,6 +11,7 @@ from ipfreely.evaluate import evaluate
 from ipfreely.graph import Graph
 from ipfreely.filepath import BIDSFilePath
 from ipfreely.returncodes import ReturnCodes
+from ipfreely.ruleset import KeyvalueOverride
 from ipfreely.ruleset import Ruleset
 from ipfreely.ruleset import RULESETS
 from ipfreely.utils.get import datafiles_for_metafile
@@ -43,6 +44,7 @@ DATASETS = {
     "ip112e1bad": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -50,6 +52,7 @@ DATASETS = {
     "ip112e1good": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -57,6 +60,7 @@ DATASETS = {
     "ip112e2v1": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -64,6 +68,7 @@ DATASETS = {
     "ip112e2v2": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -71,20 +76,23 @@ DATASETS = {
     "ip112e3v1": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
     ],
     "ip112e3v2": [
-        Test("1.1.x", TestOutcome.warning),
-        Test("1.7.x", TestOutcome.warning),
-        Test("PR1003", TestOutcome.warning),
-        Test("I1195", TestOutcome.warning),
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.violation),
         Test("forbidden", TestOutcome.violation),
     ],
     "ip112badmetapathe1": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -92,6 +100,7 @@ DATASETS = {
     "ip112badmetapathe2v1": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.violation),
         Test("I1195", TestOutcome.violation),
         Test("forbidden", TestOutcome.violation),
@@ -99,20 +108,23 @@ DATASETS = {
     "ip112badmetapathe2v2": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
     ],
     "ip170e1": [
-        Test("1.1.x", TestOutcome.warning),
-        Test("1.7.x", TestOutcome.warning),
-        Test("PR1003", TestOutcome.warning),
-        Test("I1195", TestOutcome.warning),
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.violation),
         Test("forbidden", TestOutcome.violation),
     ],
     "ip170e2": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -120,6 +132,7 @@ DATASETS = {
     "ip170e3": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -127,6 +140,7 @@ DATASETS = {
     "ip170e4": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -134,6 +148,7 @@ DATASETS = {
     "ipabsent": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.success),
@@ -141,6 +156,7 @@ DATASETS = {
     "ip170badrelpath": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.violation),
         Test("I1195", TestOutcome.violation),
         Test("forbidden", TestOutcome.violation),
@@ -148,6 +164,7 @@ DATASETS = {
     "ipexclnonsc": [
         Test("1.1.x", TestOutcome.warning),
         Test("1.7.x", TestOutcome.warning),
+        Test("1.11.x", TestOutcome.warning),
         Test("PR1003", TestOutcome.warning),
         Test("I1195", TestOutcome.warning),
         Test("forbidden", TestOutcome.violation),
@@ -155,6 +172,7 @@ DATASETS = {
     "ipi1195e1": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.violation),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -162,6 +180,7 @@ DATASETS = {
     "ipdwi001": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -169,6 +188,7 @@ DATASETS = {
     "ipdwi002": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -176,6 +196,7 @@ DATASETS = {
     "ipdwi003": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -183,6 +204,7 @@ DATASETS = {
     "iploosemeta": [
         Test("1.1.x", TestOutcome.warning),
         Test("1.7.x", TestOutcome.warning),
+        Test("1.11.x", TestOutcome.warning),
         Test("PR1003", TestOutcome.warning),
         Test("I1195", TestOutcome.warning),
         Test("forbidden", TestOutcome.violation),
@@ -190,6 +212,7 @@ DATASETS = {
     "ippr1003ae1": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -197,6 +220,7 @@ DATASETS = {
     "ippr1003ae2": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.violation),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -204,6 +228,7 @@ DATASETS = {
     "ippr1003e1v1": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -211,6 +236,7 @@ DATASETS = {
     "ippr1003e1v2": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.success),
         Test("I1195", TestOutcome.success),
         Test("forbidden", TestOutcome.violation),
@@ -304,7 +330,10 @@ def run_test_fromfns(
         for datapath in graph.m4d:
             metafiles = metafiles_for_datafile(bids_dir, datapath, ruleset=ruleset.name)
             if ".json" in metafiles and has_override(bids_dir, metafiles[".json"]):
-                outcome = TestOutcome.warning
+                if ruleset.keyvalue_override == KeyvalueOverride.warning:
+                    outcome = TestOutcome.warning
+                elif ruleset.keyvalue_override == KeyvalueOverride.violation:
+                    return TestOutcome.violation
         for metapath in graph.d4m:
             datapaths = datafiles_for_metafile(bids_dir, metapath, ruleset=ruleset.name)
             if not datapaths:

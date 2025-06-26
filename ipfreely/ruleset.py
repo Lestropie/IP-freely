@@ -19,6 +19,8 @@ InheritanceWithinDir = Enum("InheritanceWithinDir", "unique ordered any")
 
 MetaPathCheck = Enum("MetaPathCheck", "ver112 ver170")
 
+KeyvalueOverride = Enum("OverrideVerbosity", "permitted warning violation")
+
 
 @dataclass
 class Ruleset:
@@ -26,7 +28,7 @@ class Ruleset:
     compulsory_suffix: bool
     json_inheritance_within_dir: InheritanceWithinDir
     nonjson_inheritance_within_dir: InheritanceWithinDir
-    permit_jsonfield_overwrite: bool
+    keyvalue_override: KeyvalueOverride
     permit_multiple_metadata_per_data: bool
     permit_multiple_data_per_metadata: bool
     permit_nonsidecar: bool
@@ -46,7 +48,7 @@ RULESETS = {
         InheritanceWithinDir.unique,
         # JSON metadata fields can be overloaded from distant
         # to nearest applicable JSON metadata files
-        True,
+        KeyvalueOverride.permitted,
         # No limit on one data file having more than one applicable metadata file
         True,
         # No limit on one metadata file being applicable to more than one data file
@@ -68,12 +70,27 @@ RULESETS = {
         True,
         InheritanceWithinDir.unique,
         InheritanceWithinDir.unique,
-        True,
+        KeyvalueOverride.permitted,
         True,
         True,
         True,
         # ... except for the check on illegitimate metadata file
         #   location within the filesystem hierarchy
+        MetaPathCheck.ver170,
+    ),
+    # BIDS Inheritance Principle coming in 1.11.x:
+    "1.11.x": Ruleset(
+        "1.11.x",
+        # All are identical to 1.7.x ...
+        True,
+        InheritanceWithinDir.unique,
+        InheritanceWithinDir.unique,
+        # ... except that keyvalue overrides are now RECOMMENDED to avoid,
+        #   and should therefore result in a warning
+        KeyvalueOverride.warning,
+        True,
+        True,
+        True,
         MetaPathCheck.ver170,
     ),
     # What was proposed in bids-standard PR #1003:
@@ -88,7 +105,7 @@ RULESETS = {
         #   fine as long as one is unambiguously "nearest"
         InheritanceWithinDir.ordered,
         # No change to JSON field overloading
-        True,
+        KeyvalueOverride.permitted,
         # No change to multi-inheritance
         True,
         True,
@@ -117,7 +134,7 @@ RULESETS = {
         #   just one such file based on filesystem path proximity
         InheritanceWithinDir.ordered,
         # Key distinction: No longer permit JSON field overloading
-        False,
+        KeyvalueOverride.violation,
         # No change to multi-inheritance
         True,
         True,
@@ -141,7 +158,7 @@ RULESETS = {
         InheritanceWithinDir.unique,
         # No JSON field overloading
         #   (not that it would matter: can't merge multiple JSON dicts anyway)
-        False,
+        KeyvalueOverride.violation,
         # Prohibit any multi-inheritance
         False,
         False,

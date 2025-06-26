@@ -6,6 +6,7 @@ from .filepath import BIDSFilePath
 from .filepath import BIDSFilePathList
 from .graph import Graph
 from .returncodes import ReturnCodes
+from .ruleset import KeyvalueOverride
 from .ruleset import MetaPathCheck
 from .ruleset import Ruleset
 from .utils.applicability import is_applicable_nameonly
@@ -259,15 +260,21 @@ def evaluate(
         sys.stderr.write("]\n")
         return_code = ReturnCodes.IP_VIOLATION
 
-    keyval_overrides = find_overrides(bids_dir, graph)
-    if keyval_overrides:
-        sys.stderr.write(
-            f"{len(keyval_overrides)} data"
-            f" {'files have' if len(keyval_overrides) > 1 else 'file has'}"
-            " overridden JSON metadata fields according to Inheritance Principle:"
-            f' [{"; ".join(map(str, keyval_overrides.keys()))}]\n'
-        )
-        any_warning = True
+    if ruleset.keyvalue_override != KeyvalueOverride.permitted:
+        keyval_overrides = find_overrides(bids_dir, graph)
+        if keyval_overrides:
+            sys.stderr.write(
+                f"{len(keyval_overrides)} data"
+                f" {'files have' if len(keyval_overrides) > 1 else 'file has'}"
+                " overridden JSON metadata fields according to Inheritance Principle:"
+                f' [{"; ".join(map(str, keyval_overrides.keys()))}]\n'
+            )
+            if ruleset.keyvalue_override == KeyvalueOverride.warning:
+                any_warning = True
+            elif ruleset.keyvalue_override == KeyvalueOverride.violation:
+                return_code = ReturnCodes.IP_VIOLATION
+            else:
+                assert False
 
     if export_overrides_path is not None:
         save_overrides(export_overrides_path, keyval_overrides)
