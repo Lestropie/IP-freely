@@ -19,7 +19,6 @@ from ipfreely.utils.metadata import load_metadata
 from ipfreely.utils.metadata import load_numerical_matrix
 from ipfreely.utils.metadata import load_tsv
 
-
 __version__ = open(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "version"),
     encoding="ascii",
@@ -163,7 +162,12 @@ def main():
                     f" for BIDS dataset {bids_dir}"
                 )
                 sys.exit(ReturnCodes.NO_RULESET)
-            ruleset = RULESETS["1.1.x"] if bids_version < (1, 7) else RULESETS["1.7.x"]
+            if bids_version < (1, 7):
+                ruleset = RULESETS["1.1.x"]
+            elif bids_version < (1, 11):
+                ruleset = RULESETS["1.7.x"]
+            else:
+                ruleset = RULESETS["1.11.x"]
 
     evaluate_kwargs = {}
     if args.overrides is not None:
