@@ -132,7 +132,7 @@ def main():
 
     logger_kwargs: dict[str] = {"level": logging.INFO}
     if args.log:
-        logger_kwargs["log"] = args.log
+        logger_kwargs["filename"] = args.log
     logging.basicConfig(**logger_kwargs)
 
     if args.ruleset:

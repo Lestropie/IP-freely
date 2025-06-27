@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 import json
 import logging
+import logging.handlers
 import pathlib
 import sys
 from ipfreely import InheritanceError
@@ -211,6 +212,22 @@ DATASETS = {
         Test("I1195", TestOutcome.warning),
         Test("forbidden", TestOutcome.violation),
     ],
+    "ipmultielfce1v1": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.success),
+    ],
+    "ipmultielfce1v2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
     "ippr1003ae1": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
@@ -268,6 +285,18 @@ DATASETS_SKIP_FN_TESTS = (
 )
 
 
+def outcome2str(outcome: TestOutcome) -> str:
+    if outcome is TestOutcome.success:
+        return "success"
+    if outcome is TestOutcome.warning:
+        return "warning"
+    if outcome is TestOutcome.violation:
+        return "violation"
+    if outcome is TestOutcome.failure:
+        return "failure"
+    assert False
+
+
 def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
     graph_path = bids_dir / "sourcedata" / "ip_graph.json"
     if graph_path.is_file():
@@ -275,7 +304,7 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
             with open(graph_path, "r", encoding="utf-8") as f:
                 ref_graph = json.load(f)
         except json.JSONDecodeError:
-            logger.critical(f'Error reading reference graph JSON "{graph_path}"\n')
+            logger.critical(f'Error reading reference graph JSON "{graph_path}"')
             raise
         if not graph == ref_graph:
             return False
@@ -285,9 +314,7 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
             with open(metadata_path, "r", encoding="utf-8") as f:
                 ref_metadata = json.load(f)
         except json.JSONDecodeError:
-            logger.critical(
-                f'Error reading reference metadata JSON "{metadata_path}"\n'
-            )
+            logger.critical(f'Error reading reference metadata JSON "{metadata_path}"')
             raise
         data = load_metadata(bids_dir, graph)
         if data != ref_metadata:
@@ -299,7 +326,7 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
                 ref_overrides = json.load(f)
         except json.JSONDecodeError:
             logger.critical(
-                f'Error reading reference overrides JSON "{overrides_path}"\n'
+                f'Error reading reference overrides JSON "{overrides_path}"'
             )
             raise
         data = find_overrides(bids_dir, graph)
@@ -353,6 +380,11 @@ def run_dataset_tests(
     mismatches: list[tuple[str, TestOutcome, TestOutcome]] = []
     for test in tests:
         ruleset: Ruleset = RULESETS[test.testname]
+        logging.debug(
+            f"Testing {bids_dir}"
+            f" under ruleset {test.testname},"
+            f" expecting {outcome2str(test.expectation)}"
+        )
         outcome_fromgraph = run_test_fromgraph(bids_dir, graph, ruleset)
         if outcome_fromgraph != test.expectation:
             mismatches.append(
@@ -395,6 +427,7 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
         if not bids_dir.is_dir():
             raise FileNotFoundError(f"Missing example BIDS dataset" f" {dataset}")
         graph = Graph(bids_dir)
+        logging.debug(f"Commencing tests of dataset {dataset}")
         dataset_mismatches = run_dataset_tests(bids_dir, graph, tests)
         for dataset_mismatch in dataset_mismatches:
             assert dataset_mismatch[1] != dataset_mismatch[2]
@@ -402,6 +435,7 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
                 (dataset, dataset_mismatch[0], dataset_mismatch[1], dataset_mismatch[2])
             )
         graph.prune()
+        logging.debug(f"Verifying pruned graph for dataset {dataset}")
         if not check_dataset_graph(bids_dir, graph):
             mismatches.append(
                 (
@@ -411,6 +445,7 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
                     TestOutcome.failure,
                 )
             )
+        logging.debug(f"Verifying pruned graph for dataset {dataset}")
         if not functions_match_graph(bids_dir, graph):
             mismatches.append(
                 (
@@ -421,31 +456,23 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
                 )
             )
 
-    if mismatches:
-        logger.error(f"{len(mismatches)} discrepancies in test outcomes:\n")
+    for handler in logger.handlers:
+        if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stderr:
+            handler.setLevel(logging.INFO)
 
-        def outcome2str(outcome: TestOutcome) -> str:
-            if outcome is TestOutcome.success:
-                return "success"
-            if outcome is TestOutcome.warning:
-                return "warning"
-            if outcome is TestOutcome.violation:
-                return "violation"
-            if outcome is TestOutcome.failure:
-                return "failure"
-            assert False
+    if mismatches:
+        logger.info(f"{len(mismatches)} discrepancies in test outcomes")
 
         for mismatch in mismatches:
             logger.error(
-                f"    Dataset: {mismatch[0]},"
+                f"Dataset: {mismatch[0]},"
                 f" test: {mismatch[1]},"
                 f" expected {outcome2str(mismatch[2])};"
-                f" actual outcome {outcome2str(mismatch[3])}\n"
+                f" actual outcome {outcome2str(mismatch[3])}"
             )
         return 1
     else:
-        logger.info("All tests passed")
-        sys.stderr.write("All tests passed\n")
+        logger.info("All tests passed OK")
     return 0
 
 
@@ -468,10 +495,22 @@ def main():
         sys.stderr.write(f"Input BIDS examples directory {args.examples_dir} not found")
         sys.exit(1)
 
-    logger_kwargs: dict[str] = {"level": logging.CRITICAL}
+    logger.setLevel(logging.DEBUG)
+    stderr_formatter = logging.Formatter("%(levelname)s: %(message)s")
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setFormatter(stderr_formatter)
+    stderr_handler.setLevel(logging.CRITICAL)
     if args.log:
-        logger_kwargs["log"] = args.log
-    logging.basicConfig(**logger_kwargs)
+        file_handler = logging.FileHandler(args.log)
+        file_formatter = logging.Formatter(
+            "%(asctime)s | %(name)s |  %(levelname)s: %(message)s"
+        )
+        file_handler.setFormatter(file_formatter)
+        file_handler.setLevel(logging.DEBUG)
+
+    logger.addHandler(stderr_handler)
+    if args.log:
+        logger.addHandler(file_handler)
 
     return run_datasets(examples_dir)
 
