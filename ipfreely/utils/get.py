@@ -1,5 +1,7 @@
 import os
 import pathlib
+
+# import sys
 from .. import InheritanceError
 from .. import EXCLUSIONS
 from ..filepath import BIDSFilePath
@@ -56,8 +58,12 @@ def metafiles_for_datafile(
 
     initial_result: dict[str, BIDSFilePathList] = {}
 
+    # sys.stderr.write(f"For data file {datafile.relpath}:\n")
+
     # Start at the highest level in the filesystem hierarchy
     for parent in reversed(parents):
+
+        # sys.stderr.write(f"  Within parent directory {parent}:\n")
 
         # Get all matches just at this level of the filesystem hierarchy
         dir_matches: dict[str, BIDSFilePathList] = {}
@@ -67,18 +73,25 @@ def metafiles_for_datafile(
             if filename.is_dir():
                 continue
 
+            # sys.stderr.write(f"    Candidate metadata file {filename}: ")
+
             # Don't attempt to process BIDS reserved files
             if parent == bids_dir and filename.name in EXCLUSIONS:
+                # sys.stderr.write(f"Ignore as reserved\n")
                 continue
 
             filepath = BIDSFilePath(bids_dir, filename)
             # Find out if the file extension matches our metadata search
             if filepath.extension not in extensions:
+                # sys.stderr.write(f"Ignore as wrong extension\n")
                 continue
 
             # Is the metadata file deemed applicable to the data file?
             if not is_applicable(datafile, filepath):
+                # sys.stderr.write(f"Ignore as not applicable\n")
                 continue
+
+            # sys.stderr.write(f"Added\n")
 
             # Add this file to the set of metadata files
             #   deemed applicable to this data file

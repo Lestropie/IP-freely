@@ -1,6 +1,8 @@
 import json
 import os
 import pathlib
+
+# import sys
 from . import BIDSError
 from . import EXCLUSIONS
 from .extensions import EXTENSIONS
@@ -126,17 +128,25 @@ class Graph:
         #   that is no longer split by direction of association
         for datafile, by_extension in self.m4d.items():
             if str(datafile) not in ref:
+                # sys.stderr.write(f"{datafile} not in reference\n")
                 return False
             ref_by_extension = ref[str(datafile)]
-            if any(
-                extension not in by_extension for extension in ref_by_extension.keys()
-            ):
+            missing_extensions = [
+                extension
+                for extension in ref_by_extension.keys()
+                if extension not in by_extension
+            ]
+            if missing_extensions:
+                # sys.stderr.write(f"For {datafile}, extensions {missing_extensions} in reference not in graph\n")
                 return False
             for extension, metafiles in by_extension.items():
                 if extension not in ref_by_extension:
+                    # sys.stderr.write(f"For {datafile}, extension {extension} in graph not in reference\n")
                     return False
                 if isinstance(metafiles, BIDSFilePath):
                     if str(metafiles) != ref_by_extension[extension]:
+                        # sys.stderr.write(f"For {datafile}, extension {extension},"
+                        #                  f" graph file {metafiles} != reference file {ref_by_extension[extension]}\n")
                         return False
                     continue
                 assert isinstance(metafiles, BIDSFilePathList)
@@ -148,15 +158,20 @@ class Graph:
                     for ref_path in ref_by_extension[extension]
                 ]
                 if not metafiles == ref_paths:
+                    # sys.stderr.write(f"For {datafile}, extension {extension},"
+                    #                  f" graph files {metafiles} != reference files {ref_paths}\n")
                     return False
         for metafile, datafiles in self.d4m.items():
             if str(metafile) not in ref:
+                # sys.stderr.write(f"Metadata file {metafile} not in reference\n")
                 return False
             ref_datafiles = ref[str(metafile)]
             if any(str(datafile) not in ref_datafiles for datafile in datafiles) or any(
                 not any(ref_datafile == str(datafile) for datafile in datafiles)
                 for ref_datafile in ref_datafiles
             ):
+                # sys.stderr.write(f"Metadata file {metafile}, graph and reference inequal:\n"
+                #                  f"  {datafiles} != {ref_datafiles}\n")
                 return False
         # Any files (data or metadata) in the reference graph absent in this graph
         if any(
@@ -166,5 +181,9 @@ class Graph:
             )
             for ref_originfile in ref
         ):
+            # sys.stderr.write(f"Files in reference absent from graph:\n"
+            #                  f"  {self.m4d.keys() + self.d4m.keys()}\n"
+            #                  "  !=\n"
+            #                  f"  {ref.keys()}\n")
             return False
         return True

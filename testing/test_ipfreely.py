@@ -135,9 +135,9 @@ DATASETS = {
     "ip170e3": [
         Test("1.1.x", TestOutcome.success),
         Test("1.7.x", TestOutcome.success),
-        Test("1.11.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.warning),
         Test("PR1003", TestOutcome.success),
-        Test("I1195", TestOutcome.success),
+        Test("I1195", TestOutcome.violation),
         Test("forbidden", TestOutcome.violation),
     ],
     "ip170e4": [
@@ -172,12 +172,20 @@ DATASETS = {
         Test("I1195", TestOutcome.warning),
         Test("forbidden", TestOutcome.violation),
     ],
-    "ipi1195e1": [
+    "ipi1195v1": [
         Test("1.1.x", TestOutcome.violation),
         Test("1.7.x", TestOutcome.violation),
         Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.violation),
         Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipi1195v2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.violation),
         Test("forbidden", TestOutcome.violation),
     ],
     "ipdwi001": [
@@ -233,7 +241,7 @@ DATASETS = {
         Test("1.7.x", TestOutcome.violation),
         Test("1.11.x", TestOutcome.violation),
         Test("PR1003", TestOutcome.success),
-        Test("I1195", TestOutcome.success),
+        Test("I1195", TestOutcome.violation),
         Test("forbidden", TestOutcome.violation),
     ],
     "ippr1003ae2": [
@@ -285,6 +293,14 @@ DATASETS_SKIP_FN_TESTS = (
 )
 
 
+# For some datasets, a metadata graph may be intinsically ambiguous;
+#   this will be flagged in the relevant reference metadata,
+#   and the tests should correctly identify as such
+DATASETS_AMBIGUOUS_METADATA = [
+    "ipi1195v2",
+]
+
+
 def outcome2str(outcome: TestOutcome) -> str:
     if outcome is TestOutcome.success:
         return "success"
@@ -307,6 +323,7 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
             logger.critical(f'Error reading reference graph JSON "{graph_path}"')
             raise
         if not graph == ref_graph:
+            # sys.stderr.write("Inequal association graph\n")
             return False
     metadata_path = bids_dir / "sourcedata" / "ip_metadata.json"
     if metadata_path.is_file():
@@ -317,7 +334,24 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
             logger.critical(f'Error reading reference metadata JSON "{metadata_path}"')
             raise
         data = load_metadata(bids_dir, graph)
-        if data != ref_metadata:
+        for datapath in data:
+            if str(datapath) not in ref_metadata:
+                # sys.stderr.write(f"Data file missing from reference: {datapath}\n")
+                return False
+            if data[datapath] != ref_metadata[str(datapath)]:
+                # sys.stderr.write(f"Key-value content mismatch to reference: {datapath}\n")
+                # sys.stderr.write(f"  {data[datapath]}\n")
+                # sys.stderr.write(f"  !=\n")
+                # sys.stderr.write(f"{ref_metadata[str(datapath)]}\n")
+                return False
+        # Are there any entries in ref_metadata that are absent from data?
+        ref_missing = [
+            ref_datapath
+            for ref_datapath in ref_metadata
+            if not any(str(datapath) == ref_datapath for datapath in data)
+        ]
+        if ref_missing:
+            # sys.stderr.write(f"Reference data file missing from metadata: {ref_missing}\n")
             return False
     overrides_path = bids_dir / "sourcedata" / "ip_overrides.json"
     if overrides_path.is_file():
@@ -436,7 +470,9 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
             )
         graph.prune()
         logging.debug(f"Verifying pruned graph for dataset {dataset}")
-        if not check_dataset_graph(bids_dir, graph):
+        if bool(dataset in DATASETS_AMBIGUOUS_METADATA) == check_dataset_graph(
+            bids_dir, graph
+        ):
             mismatches.append(
                 (
                     dataset,
@@ -495,11 +531,7 @@ def main():
         sys.stderr.write(f"Input BIDS examples directory {args.examples_dir} not found")
         sys.exit(1)
 
-    logger.setLevel(logging.DEBUG)
-    stderr_formatter = logging.Formatter("%(levelname)s: %(message)s")
-    stderr_handler = logging.StreamHandler(sys.stderr)
-    stderr_handler.setFormatter(stderr_formatter)
-    stderr_handler.setLevel(logging.CRITICAL)
+    logging.basicConfig(stream=sys.stderr, level=logging.INFO)
     if args.log:
         file_handler = logging.FileHandler(args.log)
         file_formatter = logging.Formatter(
@@ -507,9 +539,6 @@ def main():
         )
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(logging.DEBUG)
-
-    logger.addHandler(stderr_handler)
-    if args.log:
         logger.addHandler(file_handler)
 
     return run_datasets(examples_dir)

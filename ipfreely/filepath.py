@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 import pathlib
+
+# import sys
 from . import BIDSError
 from .extensions import EXTENSIONS_STR
 from .ruleset import InheritanceWithinDir
@@ -42,32 +44,58 @@ class BIDSEntity:
 
 class BIDSFilePath:
 
-    def __init__(self, root_dir: pathlib.Path, abspath: pathlib.Path):
-        self.relpath = abspath.relative_to(root_dir)
-        self.stem = self.relpath.stem
-        # For some reason, pathlib.PurePath.stem yields the file name
-        #   excluding only the final suffix, not all of them;
-        #   therefore remove suffixes iteratively until none left,
-        #   as here want to use "stem" to refer to the string
-        #   formed by the entities and suffix
-        while pathlib.PurePath(self.stem).suffix:
-            self.stem = pathlib.PurePath(self.stem).stem
-        self.stem = str(self.stem)
-        self.extension = "".join(self.relpath.suffixes)
-        split_stem = self.stem.split("_")
-        if "-" in split_stem[-1]:
-            self.suffix = None
-        else:
-            self.suffix = split_stem[-1]
-            split_stem = split_stem[:-1]
-        try:
-            self.entities = [BIDSEntity(kv.split("-")) for kv in split_stem]
-        except BIDSError as e:
-            raise BIDSError(
-                f"Malformed entity structure in BIDS file {self.relpath}"
-            ) from e
-        if len(set(entity.key for entity in self.entities)) != len(self.entities):
-            raise BIDSError(f"Duplicate entities in BIDS file {self.relpath}")
+    # def __init__(self, root_dir: pathlib.Path, abspath: pathlib.Path):
+    def __init__(self, *args):
+        if len(args) == 2 and all(isinstance(item, pathlib.Path) for item in args):
+            self.relpath = args[1].relative_to(args[0])
+            self.stem = self.relpath.stem
+            # For some reason, pathlib.PurePath.stem yields the file name
+            #   excluding only the final suffix, not all of them;
+            #   therefore remove suffixes iteratively until none left,
+            #   as here want to use "stem" to refer to the string
+            #   formed by the entities and suffix
+            while pathlib.PurePath(self.stem).suffix:
+                self.stem = pathlib.PurePath(self.stem).stem
+            self.stem = str(self.stem)
+            self.extension = "".join(self.relpath.suffixes)
+            split_stem = self.stem.split("_")
+            if len(split_stem) == 1:
+                self.suffix = split_stem[0]
+                split_stem = ""
+            elif "-" in split_stem[-1]:
+                self.suffix = None
+            else:
+                self.suffix = split_stem[-1]
+                split_stem = split_stem[:-1]
+            try:
+                self.entities = [BIDSEntity(kv.split("-")) for kv in split_stem]
+            except BIDSError as e:
+                raise BIDSError(
+                    f"Malformed entity structure in BIDS file {self.relpath}"
+                ) from e
+            if len(set(entity.key for entity in self.entities)) != len(self.entities):
+                raise BIDSError(f"Duplicate entities in BIDS file {self.relpath}")
+            return
+        if (
+            len(args) == 4
+            and isinstance(args[0], pathlib.Path)
+            and isinstance(args[1], list)
+            and all(isinstance(item, BIDSEntity) for item in args[1])
+            and isinstance(args[2], (str, None))
+            and isinstance(args[3], str)
+            and args[3].startswith(".")
+        ):
+            self.entities = args[1]
+            self.suffix = args[2]
+            self.extension = args[3]
+            self.stem = (
+                "_".join(map(str, self.entities))
+                + ("_" if self.entities and self.suffix else "")
+                + ("" if self.suffix is None else f"{self.suffix}")
+            )
+            self.relpath = args[0] / f"{self.stem}{self.extension}"
+            return
+        raise TypeError(f"Unrecognised initialisation of filepath.BIDSFilePath: {args}")
 
     def check(self, ruleset: Ruleset) -> None:
         if ruleset.compulsory_suffix and self.suffix is None:
@@ -78,6 +106,11 @@ class BIDSFilePath:
 
     def is_metadata(self) -> bool:
         return self.extension in EXTENSIONS_STR
+
+    # TODO Define __bool__() that yields whether the relative path is valid
+    #   Example: Parent directory has "sub-" or "ses-" but those are absent from entities
+    # TODO Update any pieces of code that should be making use of this function
+    #   Eg. Generating candidate paths for maximal exploitation of inheritance
 
     def __eq__(self, other: "BIDSFilePath") -> bool:
         return self.relpath == other.relpath

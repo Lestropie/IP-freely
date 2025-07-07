@@ -11,11 +11,12 @@ def load_keyvalues(bids_dir: pathlib.Path, jsonfiles: BIDSFilePathList) -> dict[
         raise TypeError("utils.keyvalues.has_override() expects list of JSON files")
     result: dict[str] = {}
     for jsonfile in jsonfiles:
+        fullpath = bids_dir / jsonfile.relpath
         try:
-            with open(bids_dir / jsonfile.relpath, "r", encoding="utf-8") as f:
+            with open(fullpath, "r", encoding="utf-8") as f:
                 json_data = json.load(f)
         except json.JSONDecodeError as e:
-            raise BIDSError(f"Malformed key-value metadata file {jsonfile}") from e
+            raise BIDSError(f"Malformed key-value metadata file {fullpath}") from e
         for key, value in json_data.items():
             result[key] = value
     return result
@@ -28,11 +29,12 @@ def has_override(bids_dir: pathlib.Path, jsonfiles: BIDSFilePathList) -> bool:
         return False
     data: set[str] = set()
     for jsonfile in jsonfiles:
+        fullpath = bids_dir / jsonfile.relpath
         try:
-            with open(bids_dir / jsonfile.relpath, "r", encoding="utf-8") as f:
+            with open(fullpath, "r", encoding="utf-8") as f:
                 json_data = json.load(f)
         except json.JSONDecodeError as e:
-            raise BIDSError(f"Malformed key-value metadata file {jsonfile}") from e
+            raise BIDSError(f"Malformed key-value metadata file {fullpath}") from e
         for key in json_data.keys():
             if key in data:
                 return True
@@ -58,8 +60,14 @@ def find_overrides(
         fields: set[str] = set()
         clashes: set[str] = set()
         for metafile in by_extension[".json"]:
-            with open(bids_dir / metafile.relpath, "r", encoding="utf-8") as f:
-                json_data = json.load(f)
+            fullpath = bids_dir / metafile.relpath
+            try:
+                with open(fullpath, "r", encoding="utf-8") as f:
+                    json_data = json.load(f)
+            except json.JSONDecodeError as e:
+                raise BIDSError(
+                    f'Corrupt key-value metadata JSON file "{fullpath}"'
+                ) from e
             for field in json_data.keys():
                 if field in fields:
                     clashes.add(field)

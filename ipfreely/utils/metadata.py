@@ -8,7 +8,9 @@ from ..graph import Graph
 from .keyvalues import load_keyvalues
 
 
-def load_metadata(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
+def load_metadata(
+    bids_dir: pathlib.Path, graph: Graph
+) -> dict[BIDSFilePath, dict[str]]:
 
     def nearest_metapath(metapaths) -> BIDSFilePath:
         if isinstance(metapaths, BIDSFilePath):
@@ -19,7 +21,7 @@ def load_metadata(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
             return metapaths[-1]
         raise TypeError
 
-    result: dict[str] = {}
+    result: dict[BIDSFilePath, dict[str]] = {}
     for datafile, by_extension in graph.m4d.items():
         datafile_metadata: dict[str] = {}
         for extension, metapaths in by_extension.items():
@@ -39,7 +41,7 @@ def load_metadata(bids_dir: pathlib.Path, graph: Graph) -> dict[str]:
                 )
             else:
                 assert False
-        result[str(datafile)] = datafile_metadata
+        result[datafile] = datafile_metadata
     return result
 
 
