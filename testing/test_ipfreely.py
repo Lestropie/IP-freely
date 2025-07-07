@@ -301,18 +301,6 @@ DATASETS_AMBIGUOUS_METADATA = [
 ]
 
 
-def outcome2str(outcome: TestOutcome) -> str:
-    if outcome is TestOutcome.success:
-        return "success"
-    if outcome is TestOutcome.warning:
-        return "warning"
-    if outcome is TestOutcome.violation:
-        return "violation"
-    if outcome is TestOutcome.failure:
-        return "failure"
-    assert False
-
-
 def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
     graph_path = bids_dir / "sourcedata" / "ip_graph.json"
     if graph_path.is_file():
@@ -417,7 +405,7 @@ def run_dataset_tests(
         logging.debug(
             f"Testing {bids_dir}"
             f" under ruleset {test.testname},"
-            f" expecting {outcome2str(test.expectation)}"
+            f" expecting {test.expectation.name}"
         )
         outcome_fromgraph = run_test_fromgraph(bids_dir, graph, ruleset)
         if outcome_fromgraph != test.expectation:
@@ -503,8 +491,8 @@ def run_datasets(examples_dir: pathlib.Path) -> int:
             logger.error(
                 f"Dataset: {mismatch[0]},"
                 f" test: {mismatch[1]},"
-                f" expected {outcome2str(mismatch[2])};"
-                f" actual outcome {outcome2str(mismatch[3])}"
+                f" expected {mismatch[2].name};"
+                f" actual outcome {mismatch[3].name}"
             )
         return 1
     else:
