@@ -24,7 +24,7 @@ RUN git clone https://github.com/Lestropie/IP-Freely ipfreely --branch hackathon
 #   this will need to be tied to a commit hash once things are more stable
 WORKDIR /bids-examples
 RUN git clone https://github.com/Lestropie/bids-examples . && \
-    git checkout b378661e9fdb4985f45bd74d5931c7423a5263c3
+    git checkout ac2f2fb4ed66680911ea43377374291a433cb830
 WORKDIR /
 
 ENV PYTHONPATH="/ipfreely"

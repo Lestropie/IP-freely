@@ -42,187 +42,62 @@ class OutcomeMismatch:
     outcome: TestOutcome
 
 
-# Description of mismatches between expectation and BIDS legacy validator outcomes:
-# - ip112badmetapath* under 1.7.x: The stipulation that only subject-agnostic files be at root
-#   and only subject-specific files be not at root may technically be no longer present.
-# - ip112e1bad, ip170e2, ipdwi003, ipmulticfe1v2, ippr1003e1v2:
-#   Fails to identify that there are data files for which there are multiple
-#   applicable metadata files within a single filesystem hierarchy level.
-# - ip170badrelpath: TODO Check whether there are features of the specification
-#   outside of the Inheritance Principle that make this structure invalid
-# - ippr1003ae2, others: Is it really necessary that *any* file with "bold" suffix have the "_task-" entity?
-#   This might make sense for data files but seems to preclude some types of inheritance
-
 TESTS = [
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Violation
     Test("ip112e1bad", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Violation
     Test("ip112e1bad", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e1good", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e1good", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e2v1", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e2v1", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e2v2", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e2v2", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e3v1", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e3v1", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e3v2", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip112e3v2", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ip112badmetapathe1", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation MISMATCH
-    # Schema result (2.0.7): Violation MISMATCH
     Test("ip112badmetapathe1", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ip112badmetapathe2v1", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ip112badmetapathe2v1", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ip112badmetapathe2v2", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation MISMATCH
-    # Schema result (2.0.7): Violation MISMATCH
     Test("ip112badmetapathe2v2", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip170e1", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip170e1", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Violation
     Test("ip170e2", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Violation
     Test("ip170e2", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip170e3", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip170e3", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip170e4", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ip170e4", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ipabsent", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ipabsent", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Violation MISMATCH
-    # Schema result (2.0.7): Violation MISMATCH
     Test("ip170badrelpath", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ip170badrelpath", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation MISMATCH
-    # Schema result (2.0.7): Violation MISMATCH
     Test("ipexclnonsc", "1.1.2", TestOutcome.warning),
-    # Legacy result (1.15.0): Violation MISMATCH
-    # Schema result (2.0.7): Violation MISMATCH
     Test("ipexclnonsc", "1.7.0", TestOutcome.warning),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ipi1195v1", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ipi1195v1", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ipi1195v2", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ipi1195v2", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Violation
     Test("ipdwi001", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ipdwi001", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ipdwi002", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ipdwi002", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Success MISMATCH
     Test("ipdwi003", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Success MISMATCH
     Test("ipdwi003", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation MISMATCH
-    # Schema result (2.0.7): Violation MISMATCH
-    # TODO Check specification
     Test("iploosemeta", "1.1.2", TestOutcome.warning),
-    # Legacy result (1.15.0): Violation MISMATCH
-    # Schema result (2.0.7): Violation MISMATCH
-    # TODO Check specification
     Test("iploosemeta", "1.7.0", TestOutcome.warning),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ipmultielfce1v1", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ipmultielfce1v1", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Violation
     Test("ipmultielfce1v2", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Violation
     Test("ipmultielfce1v2", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ippr1003ae1", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ippr1003ae1", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ippr1003ae2", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Violation
-    # Schema result (2.0.7): Violation
     Test("ippr1003ae2", "1.7.0", TestOutcome.violation),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ippr1003e1v1", "1.1.2", TestOutcome.success),
-    # Legacy result (1.15.0): Success
-    # Schema result (2.0.7): Success
     Test("ippr1003e1v1", "1.7.0", TestOutcome.success),
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Violation
     Test("ippr1003e1v2", "1.1.2", TestOutcome.violation),
-    # Legacy result (1.15.0): Success MISMATCH
-    # Schema result (2.0.7): Violation
     Test("ippr1003e1v2", "1.7.0", TestOutcome.violation),
 ]
 
@@ -242,7 +117,7 @@ def run_tests(examples_dir: pathlib.Path, scratch_dir: pathlib.Path) -> int:
             dataset_description_data = json.load(f)
         dataset_description_data["BIDSVersion"] = test.bids_version
         with open(dataset_description_path, "w", encoding="utf-8") as f:
-            json.dump(dataset_description_data, f)
+            json.dump(dataset_description_data, f, indent=4)
         logging.debug(
             f"Running dataset {test.dataset} under BIDS version {test.bids_version}, expecting {test.expectation}"
         )
