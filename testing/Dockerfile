@@ -16,9 +16,7 @@ RUN apt-get update -yy && \
     deno cache jsr:@bids/validator@2.0.7 && \
     rm -rf /var/apt/lists
 
-# TODO Pulling tip of branch during initial development;
-#   this will need to be tied to a commit hash once things are more stable
-RUN git clone https://github.com/Lestropie/IP-Freely ipfreely --branch hackathon --depth 1
+RUN git clone https://github.com/Lestropie/IP-Freely ipfreely --branch 0.1.0 --depth 1
 
 # TODO Pulling tip of branch during initial development;
 #   this will need to be tied to a commit hash once things are more stable
