@@ -7,6 +7,7 @@ import os
 import pathlib
 import sys
 from ipfreely.evaluate import evaluate
+from ipfreely.export import export
 from ipfreely.extensions import EXTENSIONS
 from ipfreely.filepath import BIDSError
 from ipfreely.filepath import BIDSFilePath
@@ -81,6 +82,16 @@ def main():
         help="A directory containing a dataset "
         "formatted according to the BIDS standard.",
     )
+    # TODO Eventually give opportunity to modify in-place
+    # TODO Eventually give opportunity to create the new dataset
+    #   by softlinking to the input dataset rather than duplicating data files
+    parser.add_argument(
+        "-c",
+        "--convert",
+        help="Convert a dataset to conform to a different Inheritance Principle ruleset",
+        nargs=2,
+        metavar=["ruleset", "path"],
+    )
     parser.add_argument(
         "-g",
         "--graph",
@@ -127,7 +138,7 @@ def main():
 
     bids_dir = pathlib.Path(args.bids_dir)
     if not bids_dir.is_dir():
-        sys.stderr.write(f"Input BIDS directory {args.bids_dir} not found")
+        sys.stderr.write(f"Input BIDS directory {args.bids_dir} not found\n")
         sys.exit(ReturnCodes.NO_DATASET)
 
     logger_kwargs: dict[str] = {"level": logging.INFO}
@@ -183,6 +194,19 @@ def main():
                 f" chose ruleset {ruleset.name}"
             )
 
+    if args.convert is not None:
+        if args.convert[0] not in RULESETS:
+            sys.stderr.write(
+                f'Unsupported ruleset "{args.convert[0]}" nominated for conversion\n'
+            )
+            sys.exit(1)
+        args.convert[1] = pathlib.Path(args.convert[1])
+        if args.convert[1].exists():
+            sys.stderr.write(
+                f'Output conversion path "{args.convert[1]}" already exists\n'
+            )
+            sys.exit(1)
+
     evaluate_kwargs = {}
     if args.overrides is not None:
         evaluate_kwargs["export_overrides"] = args.overrides
@@ -200,11 +224,17 @@ def main():
         graph.save(args.graph)
         # graph2json_manual(bids_dir, graph, args.graph)
 
+    if args.convert is not None or args.metadata is not None:
+        metadata = load_metadata(bids_dir, graph)
+
     if args.metadata is not None:
-        data = load_metadata(bids_dir, graph)
+        temp = {str(datapath): contents for datapath, contents in metadata.items()}
         with open(args.metadata, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+            json.dump(temp, f, indent=4)
         # metadata2json_manual(bids_dir, graph, args.metadata)
+
+    if args.convert is not None:
+        export(bids_dir, metadata, RULESETS[args.convert[0]], args.convert[1])
 
     return return_code
 

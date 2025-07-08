@@ -1,6 +1,6 @@
 ## "IP-freely": Free manipulation of BIDS data according to the Inheritance Principle (IP)
 
-The goal of this software project is to create a BIDS App
+The goal of this software project is to create a BIDS tool
 that will automatically modify the storage of metadata
 predicated on different versions of the Inheritance Principle.
 
@@ -11,9 +11,7 @@ please check the [Issue list](https://github.com/Lestropie/IP-freely/issues).
 
 ## Current capabilities
 
-The tool is not yet capable of modifying BIDS data according to the Inheritance Principle,
-as is somewhat indicated by its title and description.
-It is however capable of doing the following:
+The tool is currently capable of doing the following:
 
 -   Detect violations of the Inheritance Principle
     that may otherwise be missed by other checks.
@@ -29,6 +27,12 @@ It is however capable of doing the following:
 
 -   Provide functions for accessing metadata from within a BIDS dataset
     that is maximally conformant with the Inheritance Principle.
+
+-   Convert an input BIDS dataset into an alternative dataset
+    where there is no manifestation of the Inheritance Principle.
+
+-   Report on conformity of both versions of the BIDS validator
+    against expected outcomes for example BIDS datasets designed for that purpose.
 
 ## Usage
 
@@ -64,6 +68,16 @@ The command will by default yield a zero return code if the input dataset
 satisfies all requirements of the Inheritance Principle.
 For interpretation of non-zero return codes see file `ipfreely/returncodes.py`.
 Note that some command-line options described below modulate this behaviour.
+
+### Validator validation
+
+To compare the outcomes of BIDS validators (both legacy and new schema-based implementations)
+against *a priori* expected outcomes for exemplar datasets:
+```ShellSession
+cd testing/
+docker build . -t ip-freely:testing
+docker run -it --rm --entrypoint=/usr/bin/python3 bids/ip-freely:testing /test_validators.py /bids-examples
+```
 
 ### Command-line options
 
@@ -138,6 +152,16 @@ Note that some command-line options described below modulate this behaviour.
     This therefore highlights those circumstances
     where the presence of the Inheritance Principle in any given dataset
     arguably has the greatest prospect of leading to misinterpretation of data.
+
+-   `-c` / `--convert`:
+
+    This option produces a duplicate of the input BIDS dataset
+    having been converted to conform to / exploit a specific Inheritance Principle ruleset.
+    The first argument following this command-line option is the ruleset
+    that the output converted dataset should conform to;
+    currently the only permitted ruleset for this option is "forbidden",
+    which will produce a dataset that contains no manifestations of the Inheritance Principle.
+    The second argument following the command-line option is the output dataset path.
 
 ### Common non-default usages
 
