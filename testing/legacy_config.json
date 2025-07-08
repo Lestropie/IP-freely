@@ -1,0 +1,14 @@
+{
+    "ignore": [
+        "REPETITION_TIME_MUST_DEFINE",
+        "NIFTI_TOO_SMALL",
+        "EMPTY_FILE",
+        "SLICE_TIMING_NOT_DEFINED",
+        "TASK_NAME_MUST_DEFINE",
+        "EVENTS_TSV_MISSING",
+        "TOO_FEW_AUTHORS",
+        "INCONSISTENT_SUBJECTS",
+        "README_FILE_SMALL",
+        "MISSING_SESSION"
+    ]
+}

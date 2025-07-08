@@ -1,0 +1,536 @@
+#!/usr/bin/env python3
+import argparse
+from dataclasses import dataclass
+from enum import Enum
+import json
+import logging
+import logging.handlers
+import pathlib
+import sys
+from ipfreely import InheritanceError
+from ipfreely.evaluate import evaluate
+from ipfreely.graph import Graph
+from ipfreely.filepath import BIDSFilePath
+from ipfreely.returncodes import ReturnCodes
+from ipfreely.ruleset import KeyvalueOverride
+from ipfreely.ruleset import Ruleset
+from ipfreely.ruleset import RULESETS
+from ipfreely.utils.get import datafiles_for_metafile
+from ipfreely.utils.get import metafiles_for_datafile
+from ipfreely.utils.keyvalues import find_overrides
+from ipfreely.utils.keyvalues import has_override
+from ipfreely.utils.metadata import load_metadata
+
+logger = logging.getLogger(__name__)
+
+# Run through a batch of tests,
+#   making sure that the outcomes across the set of sample datasets match expectations
+# To the greatest extent possible,
+#   generate the target outcomes blinded to the behaviour of the software
+# If a manually-specified graph is stored in the example dataset,
+#   compare the generated graph against it
+# For example datasets where the behaviour with respect to
+#   metadata file contents is important,
+#   verify what is generated from the graph
+#   against that manually generated from the expected associated metadata per data file
+
+TestOutcome = Enum("TestOutcome", "success warning violation failure")
+
+
+@dataclass
+class Test:
+    testname: str
+    expectation: TestOutcome
+
+
+DATASETS = {
+    "ip112e1bad": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e1good": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e2v1": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e2v2": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e3v1": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112e3v2": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.violation),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112badmetapathe1": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112badmetapathe2v1": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.violation),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip112badmetapathe2v2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip170e1": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.violation),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip170e2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip170e3": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.violation),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ip170e4": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipabsent": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.success),
+    ],
+    "ip170badrelpath": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.violation),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipexclnonsc": [
+        Test("1.1.x", TestOutcome.warning),
+        Test("1.7.x", TestOutcome.warning),
+        Test("1.11.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.warning),
+        Test("I1195", TestOutcome.warning),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipi1195v1": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipi1195v2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.violation),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipdwi001": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipdwi002": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipdwi003": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "iploosemeta": [
+        Test("1.1.x", TestOutcome.warning),
+        Test("1.7.x", TestOutcome.warning),
+        Test("1.11.x", TestOutcome.warning),
+        Test("PR1003", TestOutcome.warning),
+        Test("I1195", TestOutcome.warning),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ipmultielfce1v1": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.success),
+    ],
+    "ipmultielfce1v2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ippr1003ae1": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.violation),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ippr1003ae2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.violation),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ippr1003e1v1": [
+        Test("1.1.x", TestOutcome.success),
+        Test("1.7.x", TestOutcome.success),
+        Test("1.11.x", TestOutcome.success),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+    "ippr1003e1v2": [
+        Test("1.1.x", TestOutcome.violation),
+        Test("1.7.x", TestOutcome.violation),
+        Test("1.11.x", TestOutcome.violation),
+        Test("PR1003", TestOutcome.success),
+        Test("I1195", TestOutcome.success),
+        Test("forbidden", TestOutcome.violation),
+    ],
+}
+
+
+# There are some potential IP issues for which it is not reasonable
+#   for the functions that just query a single file in the dataset individually
+#   to be able to detect;
+# In those scenarios, skip just the testing of those functions
+# Any additions to this list need to be accompanied by justification
+DATASETS_SKIP_FN_TESTS = (
+    # A metadata file that is applicable to a data file by name,
+    #   but it is not within the parents of that data file
+    # Detecting this would require scouring the entire dataset for such candidates
+    #   for every individual file query
+    "ip170badrelpath",
+    "ip112badmetapathe2v1",
+    # A data file and a metadata file are an exclusive pairing,
+    #   ie. each is only associated to the other,
+    #   yet they are not a sidecar pair.
+    # Detecting this would mean running the query for the file matched.
+    # This wouldn't be terribly expensive,
+    #   but it would only be done for the purpose of this validation
+    "ipexclnonsc",
+)
+
+
+# For some datasets, a metadata graph may be intinsically ambiguous;
+#   this will be flagged in the relevant reference metadata,
+#   and the tests should correctly identify as such
+DATASETS_AMBIGUOUS_METADATA = [
+    "ipi1195v2",
+]
+
+
+def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
+    graph_path = bids_dir / "sourcedata" / "ip_graph.json"
+    if graph_path.is_file():
+        try:
+            with open(graph_path, "r", encoding="utf-8") as f:
+                ref_graph = json.load(f)
+        except json.JSONDecodeError:
+            logger.critical(f'Error reading reference graph JSON "{graph_path}"')
+            raise
+        if not graph == ref_graph:
+            # sys.stderr.write("Inequal association graph\n")
+            return False
+    metadata_path = bids_dir / "sourcedata" / "ip_metadata.json"
+    if metadata_path.is_file():
+        try:
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                ref_metadata = json.load(f)
+        except json.JSONDecodeError:
+            logger.critical(f'Error reading reference metadata JSON "{metadata_path}"')
+            raise
+        data = load_metadata(bids_dir, graph)
+        for datapath in data:
+            if str(datapath) not in ref_metadata:
+                # sys.stderr.write(f"Data file missing from reference: {datapath}\n")
+                return False
+            if data[datapath] != ref_metadata[str(datapath)]:
+                # sys.stderr.write(f"Key-value content mismatch to reference: {datapath}\n")
+                # sys.stderr.write(f"  {data[datapath]}\n")
+                # sys.stderr.write(f"  !=\n")
+                # sys.stderr.write(f"{ref_metadata[str(datapath)]}\n")
+                return False
+        # Are there any entries in ref_metadata that are absent from data?
+        ref_missing = [
+            ref_datapath
+            for ref_datapath in ref_metadata
+            if not any(str(datapath) == ref_datapath for datapath in data)
+        ]
+        if ref_missing:
+            # sys.stderr.write(f"Reference data file missing from metadata: {ref_missing}\n")
+            return False
+    overrides_path = bids_dir / "sourcedata" / "ip_overrides.json"
+    if overrides_path.is_file():
+        try:
+            with open(overrides_path, "r", encoding="utf-8") as f:
+                ref_overrides = json.load(f)
+        except json.JSONDecodeError:
+            logger.critical(
+                f'Error reading reference overrides JSON "{overrides_path}"'
+            )
+            raise
+        data = find_overrides(bids_dir, graph)
+        data = {str(datapath): list(keys) for datapath, keys in data.items()}
+        if data != ref_overrides:
+            return False
+    return True
+
+
+def run_test_fromgraph(
+    bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset
+) -> TestOutcome:
+    return_code = evaluate(bids_dir, ruleset, graph, warnings_as_errors=False)
+    if return_code != ReturnCodes.SUCCESS:
+        return TestOutcome.violation
+    outcome = (
+        TestOutcome.warning
+        if evaluate(bids_dir, ruleset, graph, warnings_as_errors=True)
+        == ReturnCodes.WARNINGS_AS_ERRORS
+        else TestOutcome.success
+    )
+    return outcome
+
+
+def run_test_fromfns(
+    bids_dir: pathlib.Path, graph: Graph, ruleset: Ruleset
+) -> TestOutcome:
+    try:
+        outcome = TestOutcome.success
+        for datapath in graph.m4d:
+            metafiles = metafiles_for_datafile(bids_dir, datapath, ruleset=ruleset.name)
+            if ".json" in metafiles and has_override(bids_dir, metafiles[".json"]):
+                if ruleset.keyvalue_override == KeyvalueOverride.warning:
+                    outcome = TestOutcome.warning
+                elif ruleset.keyvalue_override == KeyvalueOverride.violation:
+                    return TestOutcome.violation
+        for metapath in graph.d4m:
+            datapaths = datafiles_for_metafile(bids_dir, metapath, ruleset=ruleset.name)
+            if not datapaths:
+                if not ruleset.permit_nonsidecar:
+                    return TestOutcome.violation
+                outcome = TestOutcome.warning
+        return outcome
+    except InheritanceError:
+        return TestOutcome.violation
+
+
+def run_dataset_tests(
+    bids_dir: pathlib.Path, graph: Graph, tests: list[Test]
+) -> list[tuple[str, TestOutcome, TestOutcome]]:
+    mismatches: list[tuple[str, TestOutcome, TestOutcome]] = []
+    for test in tests:
+        ruleset: Ruleset = RULESETS[test.testname]
+        logging.debug(
+            f"Testing {bids_dir}"
+            f" under ruleset {test.testname},"
+            f" expecting {test.expectation.name}"
+        )
+        outcome_fromgraph = run_test_fromgraph(bids_dir, graph, ruleset)
+        if outcome_fromgraph != test.expectation:
+            mismatches.append(
+                (f"{test.testname}_fromgraph", test.expectation, outcome_fromgraph)
+            )
+        if bids_dir.name in DATASETS_SKIP_FN_TESTS:
+            continue
+        outcome_fromfns = run_test_fromfns(bids_dir, graph, ruleset)
+        if outcome_fromfns != test.expectation:
+            mismatches.append(
+                (f"{test.testname}_fromfns", test.expectation, outcome_fromfns)
+            )
+    return mismatches
+
+
+def functions_match_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
+    # Note that the graph has already been pruned
+    f2graph: dict = {}
+    for datapath in graph.m4d.keys():
+        f2graph[str(datapath)] = {}
+        from_fn = metafiles_for_datafile(bids_dir, datapath, prune=True, ruleset=None)
+        for extension, metapaths in from_fn.items():
+            f2graph[str(datapath)][extension] = (
+                str(metapaths)
+                if isinstance(metapaths, BIDSFilePath)
+                else list(map(str, metapaths))
+            )
+    for metapath in graph.d4m.keys():
+        from_fn = datafiles_for_metafile(bids_dir, metapath, prune=True, ruleset=None)
+        f2graph[str(metapath)] = list(map(str, from_fn))
+    return graph == f2graph
+
+
+def run_datasets(examples_dir: pathlib.Path) -> int:
+    # For any test for which the outcome does not match expectation,
+    #   store the test along with the actual outcome
+    mismatches: list[tuple[str, str, TestOutcome, TestOutcome]] = []
+    for dataset, tests in DATASETS.items():
+        bids_dir = examples_dir / dataset
+        if not bids_dir.is_dir():
+            raise FileNotFoundError(f"Missing example BIDS dataset" f" {dataset}")
+        graph = Graph(bids_dir)
+        logging.debug(f"Commencing tests of dataset {dataset}")
+        dataset_mismatches = run_dataset_tests(bids_dir, graph, tests)
+        for dataset_mismatch in dataset_mismatches:
+            assert dataset_mismatch[1] != dataset_mismatch[2]
+            mismatches.append(
+                (dataset, dataset_mismatch[0], dataset_mismatch[1], dataset_mismatch[2])
+            )
+        graph.prune()
+        logging.debug(f"Verifying pruned graph for dataset {dataset}")
+        if bool(dataset in DATASETS_AMBIGUOUS_METADATA) == check_dataset_graph(
+            bids_dir, graph
+        ):
+            mismatches.append(
+                (
+                    dataset,
+                    "verify_graph",
+                    TestOutcome.success,
+                    TestOutcome.failure,
+                )
+            )
+        logging.debug(f"Verifying pruned graph for dataset {dataset}")
+        if not functions_match_graph(bids_dir, graph):
+            mismatches.append(
+                (
+                    dataset,
+                    "get_functions",
+                    TestOutcome.success,
+                    TestOutcome.failure,
+                )
+            )
+
+    for handler in logger.handlers:
+        if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stderr:
+            handler.setLevel(logging.INFO)
+
+    if mismatches:
+        logger.info(f"{len(mismatches)} discrepancies in test outcomes")
+
+        for mismatch in mismatches:
+            logger.error(
+                f"Dataset: {mismatch[0]},"
+                f" test: {mismatch[1]},"
+                f" expected {mismatch[2].name};"
+                f" actual outcome {mismatch[3].name}"
+            )
+        return 1
+    else:
+        logger.info("All tests passed OK")
+    return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Test suite for IP-Freely")
+    parser.add_argument(
+        "examples_dir",
+        help="A directory containing the BIDS example datasets",
+    )
+    parser.add_argument("-l", "--log", help="Write a full log to file")
+
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError as e:
+        sys.stderr.write(f"Error parsing command-line: {e}\n")
+        sys.exit()
+
+    examples_dir = pathlib.Path(args.examples_dir)
+    if not examples_dir.is_dir():
+        sys.stderr.write(f"Input BIDS examples directory {args.examples_dir} not found")
+        sys.exit(1)
+
+    logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+    if args.log:
+        file_handler = logging.FileHandler(args.log)
+        file_formatter = logging.Formatter(
+            "%(asctime)s | %(name)s |  %(levelname)s: %(message)s"
+        )
+        file_handler.setFormatter(file_formatter)
+        file_handler.setLevel(logging.DEBUG)
+        logger.addHandler(file_handler)
+
+    return run_datasets(examples_dir)
+
+
+if __name__ == "__main__":
+    main()

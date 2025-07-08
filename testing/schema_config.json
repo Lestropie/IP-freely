@@ -1,0 +1,14 @@
+{
+    "ignore": [
+        { "code": "REPETITION_TIME_MUST_DEFINE"},
+        { "code": "NIFTI_TOO_SMALL" },
+        { "code": "EMPTY_FILE" },
+        { "code": "SLICE_TIMING_NOT_DEFINED" },
+        { "code": "TASK_NAME_MUST_DEFINE" },
+        { "code": "EVENTS_TSV_MISSING" },
+        { "code": "TOO_FEW_AUTHORS" },
+        { "code": "INCONSISTENT_SUBJECTS" },
+        { "code": "README_FILE_SMALL" },
+        { "code": "MISSING_SESSION" }
+    ]
+}
