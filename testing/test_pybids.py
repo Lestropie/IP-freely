@@ -187,46 +187,46 @@ DATASETS = {
 def check_versioned_dataset(
     bids_dir: pathlib.Path, ref_metadata: dict[str]
 ) -> TestOutcome:
-    sys.stderr.write(f"Reference metadata: {ref_metadata}\n")
+    # sys.stderr.write(f"Reference metadata: {ref_metadata}\n")
     try:
         layout = bids.BIDSLayout(bids_dir)
         metadata_read: set[str] = set()
         for filepath, content in layout.get_files().items():
-            sys.stderr.write(f"Checking file {filepath} of type {type(content)}\n")
+            # sys.stderr.write(f"Checking file {filepath} of type {type(content)}\n")
             if not isinstance(content, bids.layout.models.BIDSImageFile):
                 continue
             relpath = pathlib.PurePath(filepath).relative_to(bids_dir)
             metadata_read.add(str(relpath))
             # JSON key-value metadata
             file_keyvalues = layout.get_metadata(filepath)
-            sys.stderr.write(f"Metadata for file {relpath}: {file_keyvalues}\n")
+            # sys.stderr.write(f"Metadata for file {relpath}: {file_keyvalues}\n")
             if not ref_metadata:
-                sys.stderr.write(
-                    "  Comparing valid metadata to empty reference metadata\n"
-                )
+                # sys.stderr.write(
+                #     "  Comparing valid metadata to empty reference metadata\n"
+                # )
                 return TestOutcome.mismatch
             if str(relpath) not in ref_metadata:
-                sys.stderr.write("  Data file absent from reference metadata\n")
+                # sys.stderr.write("  Data file absent from reference metadata\n")
                 return TestOutcome.mismatch
             ref_file_metadata = ref_metadata[str(relpath)]
             if ".json" in ref_file_metadata:
                 if file_keyvalues != ref_file_metadata[".json"]:
-                    sys.stderr.write(
-                        "  Mismatch of JSON key-values to reference metadata:"
-                        f" {file_keyvalues} != {ref_file_metadata['.json']}\n"
-                    )
+                    # sys.stderr.write(
+                    #     "  Mismatch of JSON key-values to reference metadata:"
+                    #     f" {file_keyvalues} != {ref_file_metadata['.json']}\n"
+                    # )
                     return TestOutcome.mismatch
             elif file_keyvalues:
-                sys.stderr.write("  No JSON key-values in reference metadata\n")
+                # sys.stderr.write("  No JSON key-values in reference metadata\n")
                 return TestOutcome.mismatch
             if ".bvec" and ".bval" in ref_file_metadata:
                 try:
                     file_bvecpath = layout.get_bvec(filepath)
                     file_bvalpath = layout.get_bval(filepath)
                 except IndexError:
-                    sys.stderr.write(
-                        "  DWI gradient table in reference metadata absent from pybids\n"
-                    )
+                    # sys.stderr.write(
+                    #     "  DWI gradient table in reference metadata absent from pybids\n"
+                    # )
                     return TestOutcome.mismatch
                 file_bvec = numpy.loadtxt(file_bvecpath).tolist()
                 file_bval = numpy.loadtxt(file_bvalpath).tolist()
@@ -234,20 +234,20 @@ def check_versioned_dataset(
                     file_bvec != ref_file_metadata[".bvec"]
                     or file_bval != ref_file_metadata[".bval"]
                 ):
-                    sys.stderr.write("  DWI gradient table does not match reference\n")
+                    # sys.stderr.write("  DWI gradient table does not match reference\n")
                     return TestOutcome.mismatch
             else:
                 # If pybids reports bvec / bval absent from the reference metadata,
                 #   treat that as a mismatch
                 try:
                     file_bvecpath = layout.get_bvec(filepath)
-                    sys.stderr.write("  DWI gradient table read not in reference\n")
+                    # sys.stderr.write("  DWI gradient table read not in reference\n")
                     return TestOutcome.mismatch
                 except IndexError:
                     pass
                 try:
                     file_bvalpath = layout.get_bval(filepath)
-                    sys.stderr.write("  DWI gradient table read not in reference\n")
+                    # sys.stderr.write("  DWI gradient table read not in reference\n")
                     return TestOutcome.mismatch
                 except IndexError:
                     pass
@@ -259,9 +259,9 @@ def check_versioned_dataset(
     if ref_metadata:
         ref_unread = [key for key in ref_metadata if key not in metadata_read]
         if ref_unread:
-            sys.stderr.write(
-                f"  Data file in reference metadata not read: {ref_unread}\n"
-            )
+            # sys.stderr.write(
+            #     f"  Data file in reference metadata not read: {ref_unread}\n"
+            # )
             return TestOutcome.mismatch
     return TestOutcome.match
 
