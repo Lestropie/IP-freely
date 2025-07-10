@@ -18,17 +18,16 @@ RUN apt-get update -yy && \
 
 RUN git clone https://github.com/Lestropie/IP-Freely ipfreely --branch 0.1.0 --depth 1
 
-# TODO Pulling tip of branch during initial development;
-#   this will need to be tied to a commit hash once things are more stable
 WORKDIR /bids-examples
 RUN git clone https://github.com/Lestropie/bids-examples . && \
-    git checkout ac2f2fb4ed66680911ea43377374291a433cb830
+    git checkout 344815a4b2cdaa93f2f77c1ab72c8a64cb904989
 WORKDIR /
 
 ENV PYTHONPATH="/ipfreely"
 
 COPY test_ipfreely.py /test_ipfreely.py
-COPY test_validator.py /test_validator.py
+COPY test_pybids.py /test_pybids.py
+COPY test_validators.py /test_validators.py
 COPY legacy_config.json /legacy_config.json
 COPY schema_config.json /schema_config.json
 

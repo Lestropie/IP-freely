@@ -321,10 +321,13 @@ def check_dataset_graph(bids_dir: pathlib.Path, graph: Graph) -> bool:
         except json.JSONDecodeError:
             logger.critical(f'Error reading reference metadata JSON "{metadata_path}"')
             raise
+        # sys.stderr.write(f"Contents of reference: {ref_metadata.keys()}\n")
         data = load_metadata(bids_dir, graph)
+        # sys.stderr.write(f"Contents of metadata: {list(map(str, data.keys()))}\n")
         for datapath in data:
             if str(datapath) not in ref_metadata:
                 # sys.stderr.write(f"Data file missing from reference: {datapath}\n")
+                # sys.stderr.write(f"Contents of reference: {ref_metadata.keys()}\n")
                 return False
             if data[datapath] != ref_metadata[str(datapath)]:
                 # sys.stderr.write(f"Key-value content mismatch to reference: {datapath}\n")

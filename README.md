@@ -79,6 +79,15 @@ docker build . -t ip-freely:testing
 docker run -it --rm --entrypoint=/usr/bin/python3 bids/ip-freely:testing /test_validators.py /bids-examples
 ```
 
+### `pybids` validation
+
+To compare the outcomes of `pybids` against *a priori* expected outcomes for exemplar datasets:
+```ShellSession
+cd testing/
+docker build . -t ip-freely:testing
+docker run -it --rm --entrypoint=/usr/bin/python3 bids/ip-freely:testing /test_pybids.py /bids-examples
+```
+
 ### Command-line options
 
 #### Inputs
