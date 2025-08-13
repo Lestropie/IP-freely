@@ -1,4 +1,4 @@
-## "IP-freely": Free manipulation of BIDS data according to the Inheritance Principle (IP)
+# "IP-freely": Free manipulation of BIDS data according to the Inheritance Principle (IP)
 
 The goal of this software project is to create a BIDS tool
 that will automatically modify the storage of metadata
@@ -212,3 +212,12 @@ the script does not report any discordances between the expected outcomes of val
 and the expectations that are manually pre-programmed.
 Note that the test data and the tests on this repository
 are not yet robustly version-matched.
+
+## Acknowledgments
+
+RS is supported by fellowship funding from the National Imaging Facility (NIF),
+an Australian Government National Collaborative Research Infrastructure Strategy (NCRIS) capability.
+The Florey Institute of Neuroscience and Mental Health
+acknowledges the strong support from the Victorian Government and,
+in particular,
+the funding from the Operational Infrastructure Support Grant.
