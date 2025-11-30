@@ -116,7 +116,7 @@ docker run -it --rm --entrypoint=/usr/bin/python3 bids/ip-freely:testing /test_p
 -   `-g` / `--graph`:
 
     This option produces a JSON file encoding the full relational structure
-    betwen datafiles and metadata files in the dataset:
+    between datafiles and metadata files in the dataset:
 
     -   For each *data file*,
         the output of this option contains a *dictionary*
