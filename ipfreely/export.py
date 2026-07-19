@@ -164,6 +164,11 @@ def export_I1195(
             #   generating all possible file names in all parents,
             #   that one of the canididates may in fact violate the part of the IP where a metadata file
             #   can't be applicable by name to a file but inapplicable by location
+            # O(1) membership test for the datafile-eligibility scan below.
+            # BIDSFilePath is hashable (hash == relpath.__hash__, __eq__ compares
+            # relpath), so a set is an exact stand-in for the list here; only the
+            # membership complexity changes, not the truth value or any ordering.
+            remaining_set: set[BIDSFilePath] = set(remaining_datapaths)
             candidates: set[BIDSFilePath] = set()
             for datapath in remaining_datapaths:
                 for parent in datapath.relpath.parents:
@@ -179,7 +184,7 @@ def export_I1195(
                 candidate_eligible: bool = True
                 datafile_matches: int = 0
                 for datapath in metadata:
-                    if datapath in remaining_datapaths:
+                    if datapath in remaining_set:
                         if is_applicable(datapath, candidate):
                             datafile_matches += 1
                     elif is_applicable(datapath, candidate):
