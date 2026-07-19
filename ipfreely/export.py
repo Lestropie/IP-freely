@@ -88,6 +88,33 @@ def export_I1195(
             for datapath in metadata
         }
 
+        # Index data files for candidate-eligibility lookup (optimisation (c)).
+        #   A candidate metadata path with suffix S (non-None) and entities E can
+        #   only be *name*-applicable to a data file whose suffix equals S and whose
+        #   entity key-values are a superset of E (equal values); the candidate's
+        #   extension plays no part in is_applicable() at all. So key each data file
+        #   by (suffix, frozenset of its entity (key, value) pairs) for EVERY subset
+        #   of its entities. A candidate then retrieves exactly the data files it is
+        #   name-applicable to via key (candidate.suffix, frozenset(candidate
+        #   entities)); the filesystem-location filter is applied afterwards by
+        #   is_applicable() over that already-narrowed set.
+        # Correctness: this is built over the FULL `metadata` set (not just the
+        #   remaining data files), so the "reject if ANY non-remaining data file is
+        #   applicable" guard still sees every data file. The retrieved bucket is
+        #   EXACTLY the name-applicable set: any data file omitted from a candidate's
+        #   bucket differs in suffix or is missing one of the candidate's entities, so
+        #   is_applicable() would return False for it regardless of location — dropping
+        #   it changes nothing. Candidates with a None suffix (would match any data
+        #   file's suffix) fall back to the full scan rather than risk a miss.
+        datafile_index: dict[tuple, list[BIDSFilePath]] = {}
+        for datapath in metadata:
+            entity_kvs = [(entity.key, entity.value) for entity in datapath.entities]
+            for size in range(len(entity_kvs) + 1):
+                for subset in combinations(entity_kvs, size):
+                    datafile_index.setdefault(
+                        (datapath.suffix, frozenset(subset)), []
+                    ).append(datapath)
+
         # First step: For every unique key-value pair, generate a list of BIDSFilePaths to which it applies
         # Note: This applies exclusively to JSON; will need to do separate for non-JSON
         revkeyvalue: dict[tuple, BIDSFilePathList] = {}
@@ -195,7 +222,26 @@ def export_I1195(
                 candidate_parent_str: str = str(candidate.relpath.parent)
                 candidate_eligible: bool = True
                 datafile_matches: int = 0
-                for datapath in metadata:
+                # Consult only the data files this candidate could be name-applicable
+                #   to (optimisation (c)) instead of scanning all of `metadata`. For a
+                #   suffix-bearing candidate that is the exact index bucket; a
+                #   suffix-less candidate could match any suffix, so fall back to the
+                #   full set to stay conservative. Location is still filtered by
+                #   is_applicable() below, so the truth value is unchanged.
+                if candidate.suffix is not None:
+                    relevant_datapaths = datafile_index.get(
+                        (
+                            candidate.suffix,
+                            frozenset(
+                                (entity.key, entity.value)
+                                for entity in candidate.entities
+                            ),
+                        ),
+                        (),
+                    )
+                else:
+                    relevant_datapaths = metadata
+                for datapath in relevant_datapaths:
                     if datapath in remaining_set:
                         if is_applicable(
                             datapath,
