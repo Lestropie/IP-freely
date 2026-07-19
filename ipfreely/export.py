@@ -1,12 +1,15 @@
+from cProfile import Profile
+from pstats import SortKey, Stats
+
 import csv
 import json
 from itertools import chain, combinations
 import logging
 import pathlib
 import shutil
-
 # import sys
 import numpy
+
 from ipfreely.extensions import EXTENSIONS
 from ipfreely.filepath import BIDSFilePath
 from ipfreely.filepath import BIDSFilePathList
@@ -34,7 +37,7 @@ COPY_UNMODIFIED = [
 
 CONVERSION_RULESETS = [
     "forbidden",
-    # "I1195"
+    "I1195"
 ]
 
 
@@ -70,170 +73,203 @@ def export_I1195(
     out_dir: pathlib.Path,
 ) -> None:
 
-    for datapath, by_extension in metadata.items():
-        parent = out_dir / datapath.relpath.parent
-        if not parent.exists():
-            parent.mkdir(parents=True)
-        shutil.copyfile(bids_dir / datapath.relpath, out_dir / datapath.relpath)
+    with Profile() as profile:
 
-    # First step: For every unique key-value pair, generate a list of BIDSFilePaths to which it applies
-    # Note: This applies exclusively to JSON; will need to do separate for non-JSON
-    revkeyvalue: dict[tuple, BIDSFilePathList] = {}
-    # For other metadata extensions, key by a tuple of file extension and contents
-    revother: dict[tuple, BIDSFilePathList] = {}
-    for datapath, by_extension in metadata.items():
-        for extension, contents in by_extension.items():
-            if extension == ".json":
-                for key, value in contents.items():
-                    if isinstance(value, list):
-                        if isinstance(value[0], list):
-                            value = tuple(tuple(row) for row in value)
+        for datapath, by_extension in metadata.items():
+            parent = out_dir / datapath.relpath.parent
+            if not parent.exists():
+                parent.mkdir(parents=True)
+            shutil.copyfile(bids_dir / datapath.relpath, out_dir / datapath.relpath)
+
+        # First step: For every unique key-value pair, generate a list of BIDSFilePaths to which it applies
+        # Note: This applies exclusively to JSON; will need to do separate for non-JSON
+        revkeyvalue: dict[tuple, BIDSFilePathList] = {}
+        # For other metadata extensions, key by a tuple of file extension and contents
+        revother: dict[tuple, BIDSFilePathList] = {}
+        for datapath, by_extension in metadata.items():
+            for extension, contents in by_extension.items():
+                if extension == ".json":
+                    for key, value in contents.items():
+                        if isinstance(value, list):
+                            if isinstance(value[0], list):
+                                value = tuple(tuple(row) for row in value)
+                            else:
+                                value = tuple(value)
+                        if (key, value) in revkeyvalue:
+                            revkeyvalue[(key, value)].append(datapath)
                         else:
-                            value = tuple(value)
-                    if (key, value) in revkeyvalue:
-                        revkeyvalue[(key, value)].append(datapath)
-                    else:
-                        revkeyvalue[(key, value)] = [datapath]
-            else:
-                if isinstance(contents, list):
-                    if isinstance(contents[0], list):
-                        contents = tuple(tuple(row) for row in contents)
-                    else:
-                        contents = tuple(contents)
-                if (extension, contents) in revother:
-                    revother[(extension, contents)].append(datapath)
+                            revkeyvalue[(key, value)] = [datapath]
                 else:
-                    revother[(extension, contents)] = [datapath]
+                    if isinstance(contents, list):
+                        if isinstance(contents[0], list):
+                            contents = tuple(tuple(row) for row in contents)
+                        else:
+                            contents = tuple(contents)
+                    if (extension, contents) in revother:
+                        revother[(extension, contents)].append(datapath)
+                    else:
+                        revother[(extension, contents)] = [datapath]
 
-    # Algorithm presumably will not be of the form of
-    #   "find the smallest / largest filename that captures all of these",
-    #   since there's no guarantee that there will in fact be a location
-    #   that will encapsulate 100% of these files and 0% of other files
-    # Consider instead:
-    # - Generate a comprehensive list of all candidate metadata file paths
-    #   that would capture at least one of these files
-    # - For each of these:
-    #   - If a data file not in this list would match, reject the candidate immediately
-    #   - If no such match, add candidate to a set
-    #     indexed by the number of data files in the list that it would be applicable to
-    # - Choose the candidate that becomes applicable to the greatest number of such files
-    #   (if there's a tie, should choose higher or lower parent? Fewer or more entities?
-    #
-    # - Remove these from the list, and repeat
+        # Algorithm presumably will not be of the form of
+        #   "find the smallest / largest filename that captures all of these",
+        #   since there's no guarantee that there will in fact be a location
+        #   that will encapsulate 100% of these files and 0% of other files
+        # Consider instead:
+        # - Generate a comprehensive list of all candidate metadata file paths
+        #   that would capture at least one of these files
+        # - For each of these:
+        #   - If a data file not in this list would match, reject the candidate immediately
+        #   - If no such match, add candidate to a set
+        #     indexed by the number of data files in the list that it would be applicable to
+        # - Choose the candidate that becomes applicable to the greatest number of such files
+        #   (if there's a tie, should choose higher or lower parent? Fewer or more entities?
+        #
+        # - Remove these from the list, and repeat
+        #
+        # TODO Functions with greatest contribution to slow runtime:
+        #     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        # 3040723994  372.330    0.000 1553.077    0.000 filepath.py:115(__eq__)
+        # 3230168741  840.637    0.000 1392.261    0.000 pathlib.py:663(__eq__)
+        #   70587301   44.752    0.000  789.144    0.000 applicability.py:39(is_applicable)
+        #   70587301   61.262    0.000  650.027    0.000 _collections_abc.py:1049(__contains__)
+        #  260146218   54.752    0.000  377.506    0.000 _collections_abc.py:1039(__iter__)
+        #  223426531  118.538    0.000  322.754    0.000 pathlib.py:525(__getitem__)
+        # 6461241622  422.710    0.000  441.470    0.000 pathlib.py:654(_cparts)
+        # 3460638239  126.970    0.000  126.970    0.000 {built-in method builtins.isinstance}
+        #  412966059   62.059    0.000   82.203    0.000 pathlib.py:519(__len__)
+        #  261022523   52.145    0.000   74.922    0.000 pathlib.py:600(_from_parsed_parts)
+        #
+        # - Find a more efficient way to generate the set of all possible filesystem paths
+        #   given the set of data files to which this metadata key-value applies
+        # - Try to avoid instantiation of pathlib.Paths until necessary
+        # - Try JIT compilation: https://numba.pydata.org/
+        #
 
-    def best_metadata_path(
-        remaining_datapaths: list[BIDSFilePath], extension: str
-    ) -> BIDSFilePath:
 
-        def all_subsets(ss):
-            return chain(*map(lambda x: combinations(ss, x), range(0, len(ss) + 1)))
 
-        # From the set of files left in this list,
-        #   generate a list of all plausible metadata paths
-        #   that would apply to at least one of these files
-        # TODO Eventually, keep track of candidate file paths rejected in previous iterations
-        #   for this particular key-value pair
-        # TODO Perhaps better: Generate a list of all entities & suffixes across all data files,
-        #   and only generate the full set of all subsets of such once.
-        # TODO Might be tricky to get the ordering of entities correct in this instance
-        # How to deal with data files with the same entity key but different value?
-        # Could just concatenate all unique key-value pairs, then look for duplicates in any candidate
-        # TODO It's potentially possible that with this current approach,
-        #   generating all possible file names in all parents,
-        #   that one of the canididates may in fact violate the part of the IP where a metadata file
-        #   can't be applicable by name to a file but inapplicable by location
-        candidates: set[BIDSFilePath] = set()
-        for datapath in remaining_datapaths:
-            for parent in datapath.relpath.parents:
-                for entities in all_subsets(datapath.entities):
-                    candidates.add(
-                        BIDSFilePath(parent, list(entities), datapath.suffix, extension)
-                    )
-        refined_candidates: BIDSFilePathList = {}
-        max_matches: int = 0
-        for candidate in candidates:
-            candidate_eligible: bool = True
-            datafile_matches: int = 0
-            for datapath in metadata:
-                if datapath in remaining_datapaths:
-                    if is_applicable(datapath, candidate):
-                        datafile_matches += 1
-                elif is_applicable(datapath, candidate):
-                    candidate_eligible = False
-                    break
-            if candidate_eligible:
-                if datafile_matches > max_matches:
-                    max_matches = datafile_matches
-                    refined_candidates = [candidate]
-                elif datafile_matches == max_matches:
-                    refined_candidates.append(candidate)
-        # At the very worst this should give a list of sidecars
-        #   for the remaining data files;
-        #   if it is somehow empty then there's a deficit
-        #   in the generation of candidates
-        assert refined_candidates
 
-        # Now we need to choose one of the candidates from this list
-        # What should our order of selection be?
-        # For now, going to go with:
-        #   - Lowest in the filesystem hierarchy (ie. modality directory)
-        #   - But shortest file name
-        # TODO If generating a proposal ruleset where suffixes are optional,
-        #   may need to refine this accordingly
-        def priority(item: BIDSFilePath) -> int:
-            return len(item.entities) - 1024 * len(item.relpath.parents)
 
-        candidate = sorted(refined_candidates, key=priority)[0]
-        # TODO If the nominated path is higher in the filesystem hierarchy
-        #   than is necessary to capture all datafiles to which it applies,
-        #   push it to the lowest common parent
-        # TODO Does the change in priority() above resolve?
-        return candidate
 
-    # TODO This is currently too slow to be practical
-    # What are some hypothetical ways in which this could be sped up?
-    # - Generate candidate paths in highest filesystem level only;
-    #   if zero plausible candidates are found, choose all directories at the next level down
-    # - Limit generation of plausible filesystem paths
-    #   Currently every data file generates a full set of all possible entity subsets,
-    #   and are relying on rejection of redundant entries after they have been generated;
-    #   better would be to generate all possible sets of entities based on all data files
-    #   in a single go
+        def best_metadata_path(
+            remaining_datapaths: list[BIDSFilePath], extension: str
+        ) -> BIDSFilePath:
 
-    new_json_data: dict[BIDSFilePath, dict] = {}
-    for (key, value), datapaths in revkeyvalue.items():
-        # Item iterated over should remain immutable
-        remaining_datapaths = list(datapaths)
-        # Exit loop once there are no data files left to which this key-value metadata should be ascribed
-        while remaining_datapaths:
-            metapath: BIDSFilePath = best_metadata_path(remaining_datapaths, ".json")
-            if metapath in new_json_data:
-                assert key not in new_json_data[metapath]
-                new_json_data[metapath][key] = value
-            else:
-                new_json_data[metapath] = {key: value}
-            old_count: int = len(remaining_datapaths)
-            remaining_datapaths = [
-                item
-                for item in remaining_datapaths
-                if not is_applicable(item, metapath)
-            ]
-            assert len(remaining_datapaths) < old_count
+            def all_subsets(ss):
+                return chain(*map(lambda x: combinations(ss, x), range(0, len(ss) + 1)))
 
-    new_other_data: dict[BIDSFilePath] = {}
-    for (extension, contents), datapaths in revother.items():
-        remaining_datapaths = list(datapaths)
-        while remaining_datapaths:
-            metapath: BIDSFilePath = best_metadata_path(remaining_datapaths, extension)
-            assert metapath not in new_other_data
-            new_other_data[metapath] = contents
-            old_count: int = len(remaining_datapaths)
-            remaining_datapaths = [
-                item
-                for item in remaining_datapaths
-                if not is_applicable(item, metapath)
-            ]
-            assert len(remaining_datapaths) < old_count
+            # From the set of files left in this list,
+            #   generate a list of all plausible metadata paths
+            #   that would apply to at least one of these files
+            # TODO Eventually, keep track of candidate file paths rejected in previous iterations
+            #   for this particular key-value pair
+            # TODO Perhaps better: Generate a list of all entities & suffixes across all data files,
+            #   and only generate the full set of all subsets of such once.
+            # TODO Might be tricky to get the ordering of entities correct in this instance
+            # How to deal with data files with the same entity key but different value?
+            # Could just concatenate all unique key-value pairs, then look for duplicates in any candidate
+            # TODO It's potentially possible that with this current approach,
+            #   generating all possible file names in all parents,
+            #   that one of the canididates may in fact violate the part of the IP where a metadata file
+            #   can't be applicable by name to a file but inapplicable by location
+            candidates: set[BIDSFilePath] = set()
+            for datapath in remaining_datapaths:
+                for parent in datapath.relpath.parents:
+                    for entities in all_subsets(datapath.entities):
+                        candidates.add(
+                            BIDSFilePath(parent, list(entities), datapath.suffix, extension)
+                        )
+            refined_candidates: BIDSFilePathList = {}
+            max_matches: int = 0
+            for candidate in candidates:
+                candidate_eligible: bool = True
+                datafile_matches: int = 0
+                for datapath in metadata:
+                    if datapath in remaining_datapaths:
+                        if is_applicable(datapath, candidate):
+                            datafile_matches += 1
+                    elif is_applicable(datapath, candidate):
+                        candidate_eligible = False
+                        break
+                if candidate_eligible:
+                    if datafile_matches > max_matches:
+                        max_matches = datafile_matches
+                        refined_candidates = [candidate]
+                    elif datafile_matches == max_matches:
+                        refined_candidates.append(candidate)
+            # At the very worst this should give a list of sidecars
+            #   for the remaining data files;
+            #   if it is somehow empty then there's a deficit
+            #   in the generation of candidates
+            assert refined_candidates
+
+            # Now we need to choose one of the candidates from this list
+            # What should our order of selection be?
+            # For now, going to go with:
+            #   - Lowest in the filesystem hierarchy (ie. modality directory)
+            #   - But shortest file name
+            # TODO If generating a proposal ruleset where suffixes are optional,
+            #   may need to refine this accordingly
+            def priority(item: BIDSFilePath) -> int:
+                return len(item.entities) - 1024 * len(item.relpath.parents)
+
+            candidate = sorted(refined_candidates, key=priority)[0]
+            # TODO If the nominated path is higher in the filesystem hierarchy
+            #   than is necessary to capture all datafiles to which it applies,
+            #   push it to the lowest common parent
+            # TODO Does the change in priority() above resolve?
+            return candidate
+
+        # TODO This is currently too slow to be practical
+        # What are some hypothetical ways in which this could be sped up?
+        # - Generate candidate paths in highest filesystem level only;
+        #   if zero plausible candidates are found, choose all directories at the next level down
+        # - Limit generation of plausible filesystem paths
+        #   Currently every data file generates a full set of all possible entity subsets,
+        #   and are relying on rejection of redundant entries after they have been generated;
+        #   better would be to generate all possible sets of entities based on all data files
+        #   in a single go
+
+        new_json_data: dict[BIDSFilePath, dict] = {}
+        for (key, value), datapaths in revkeyvalue.items():
+            # Item iterated over should remain immutable
+            remaining_datapaths = list(datapaths)
+            # Exit loop once there are no data files left to which this key-value metadata should be ascribed
+            while remaining_datapaths:
+                metapath: BIDSFilePath = best_metadata_path(remaining_datapaths, ".json")
+                if metapath in new_json_data:
+                    assert key not in new_json_data[metapath]
+                    new_json_data[metapath][key] = value
+                else:
+                    new_json_data[metapath] = {key: value}
+                old_count: int = len(remaining_datapaths)
+                remaining_datapaths = [
+                    item
+                    for item in remaining_datapaths
+                    if not is_applicable(item, metapath)
+                ]
+                assert len(remaining_datapaths) < old_count
+
+        new_other_data: dict[BIDSFilePath] = {}
+        for (extension, contents), datapaths in revother.items():
+            remaining_datapaths = list(datapaths)
+            while remaining_datapaths:
+                metapath: BIDSFilePath = best_metadata_path(remaining_datapaths, extension)
+                assert metapath not in new_other_data
+                new_other_data[metapath] = contents
+                old_count: int = len(remaining_datapaths)
+                remaining_datapaths = [
+                    item
+                    for item in remaining_datapaths
+                    if not is_applicable(item, metapath)
+                ]
+                assert len(remaining_datapaths) < old_count
+
+        (
+            Stats(profile)
+            .strip_dirs()
+            .sort_stats(SortKey.CUMULATIVE)
+            .print_stats()
+        )
 
     for new_json_filepath, keyvalues in new_json_data.items():
         with open(out_dir / new_json_filepath.relpath, "w", encoding="utf-8") as f:
@@ -290,7 +326,7 @@ def export(
 
     if ruleset.name == "forbidden":
         export_forbidden(bids_dir, metadata, out_dir)
-    # elif ruleset.name == "I1195":
-    #     export_I1195(bids_dir, metadata, out_dir)
+    elif ruleset.name == "I1195":
+        export_I1195(bids_dir, metadata, out_dir)
     else:
         assert False
