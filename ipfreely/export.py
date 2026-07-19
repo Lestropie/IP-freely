@@ -179,34 +179,31 @@ def export_I1195(
         # - Try JIT compilation: https://numba.pydata.org/
         #
 
-        def best_metadata_path(
-            remaining_datapaths: list[BIDSFilePath], extension: str
-        ) -> BIDSFilePath:
+        def all_subsets(ss):
+            return chain(*map(lambda x: combinations(ss, x), range(0, len(ss) + 1)))
 
-            def all_subsets(ss):
-                return chain(*map(lambda x: combinations(ss, x), range(0, len(ss) + 1)))
-
-            # From the set of files left in this list,
-            #   generate a list of all plausible metadata paths
-            #   that would apply to at least one of these files
-            # TODO Eventually, keep track of candidate file paths rejected in previous iterations
-            #   for this particular key-value pair
-            # TODO Perhaps better: Generate a list of all entities & suffixes across all data files,
-            #   and only generate the full set of all subsets of such once.
-            # TODO Might be tricky to get the ordering of entities correct in this instance
-            # How to deal with data files with the same entity key but different value?
-            # Could just concatenate all unique key-value pairs, then look for duplicates in any candidate
-            # TODO It's potentially possible that with this current approach,
-            #   generating all possible file names in all parents,
-            #   that one of the canididates may in fact violate the part of the IP where a metadata file
-            #   can't be applicable by name to a file but inapplicable by location
-            # O(1) membership test for the datafile-eligibility scan below.
-            # BIDSFilePath is hashable (hash == relpath.__hash__, __eq__ compares
-            # relpath), so a set is an exact stand-in for the list here; only the
-            # membership complexity changes, not the truth value or any ordering.
-            remaining_set: set[BIDSFilePath] = set(remaining_datapaths)
+        def build_candidates(datapaths, extension: str) -> "set[BIDSFilePath]":
+            # Optimisation (e), part 1: generate the entity/suffix/parent candidate
+            #   space ONCE per applicability-set — from the deduplicated union of the
+            #   set's data files' parents x entity-subsets x suffix — instead of
+            #   rebuilding the 2^entities power set inside best_metadata_path on every
+            #   greedy `while` iteration. The set() collapses candidates shared between
+            #   data files (same parent/suffix, overlapping entity subsets) into one.
+            # Correctness: this is built over the FULL applicability-set, not the
+            #   shrinking `remaining` set, so it is a *superset* of the candidates the
+            #   original per-iteration generation (over `remaining` only) would produce.
+            #   Every extra candidate is one derivable only from data files already
+            #   covered this round; by construction such a candidate is applicable (name
+            #   AND location) to at least one of those now-non-remaining data files, so
+            #   best_metadata_path's eligibility scan rejects it. The chosen candidate is
+            #   therefore unchanged.
+            # Location rule: each candidate's parent, suffix and entity-subset are all
+            #   taken from the SAME data file, so no cross-file entity mixing is
+            #   introduced and every generated candidate remains fully applicable to its
+            #   own generating data file — the "applicable by name but inapplicable by
+            #   location" rule is not newly violated relative to the original.
             candidates: set[BIDSFilePath] = set()
-            for datapath in remaining_datapaths:
+            for datapath in datapaths:
                 for parent in datapath.relpath.parents:
                     for entities in all_subsets(datapath.entities):
                         candidates.add(
@@ -214,9 +211,33 @@ def export_I1195(
                                 parent, list(entities), datapath.suffix, extension
                             )
                         )
-            refined_candidates: BIDSFilePathList = {}
+            return candidates
+
+        def best_metadata_path(
+            remaining_set: "set[BIDSFilePath]",
+            candidates: "set[BIDSFilePath]",
+            rejected: "set[BIDSFilePath]",
+        ) -> BIDSFilePath:
+
+            # Optimisation (e), part 2: `candidates` is generated once per
+            #   applicability-set (see build_candidates) and reused across the greedy
+            #   iterations; `rejected` caches eligibility rejections across them.
+            # Rejection monotonicity: a candidate disqualified because a NON-remaining
+            #   (external / already-covered) data file is applicable to it stays
+            #   disqualified — that data file never re-enters `remaining` within this
+            #   solve, so the disqualifying match persists. A cached rejection is thus
+            #   permanently valid and such candidates are skipped outright.
+            # NOT cached: the match count (`datafile_matches`) of a still-eligible
+            #   candidate DOES change as `remaining` shrinks, as does the chosen-candidate
+            #   ranking; both are recomputed every iteration below.
+            # BIDSFilePath is hashable (hash == relpath.__hash__, __eq__ compares
+            # relpath), so it is a valid set member for `candidates`/`rejected` and for
+            # the O(1) `remaining_set` membership test below.
+            refined_candidates: BIDSFilePathList = []
             max_matches: int = 0
             for candidate in candidates:
+                if candidate in rejected:
+                    continue
                 # Stringify the candidate's parent directory once per candidate,
                 #   not once per data file.
                 candidate_parent_str: str = str(candidate.relpath.parent)
@@ -258,12 +279,17 @@ def export_I1195(
                     ):
                         candidate_eligible = False
                         break
-                if candidate_eligible:
-                    if datafile_matches > max_matches:
-                        max_matches = datafile_matches
-                        refined_candidates = [candidate]
-                    elif datafile_matches == max_matches:
-                        refined_candidates.append(candidate)
+                if not candidate_eligible:
+                    # Cache this eligibility rejection: an external match holds for
+                    #   every later, smaller `remaining` in this solve, so this
+                    #   candidate need never be re-tested.
+                    rejected.add(candidate)
+                    continue
+                if datafile_matches > max_matches:
+                    max_matches = datafile_matches
+                    refined_candidates = [candidate]
+                elif datafile_matches == max_matches:
+                    refined_candidates.append(candidate)
             # At the very worst this should give a list of sidecars
             #   for the remaining data files;
             #   if it is somehow empty then there's a deficit
@@ -287,15 +313,12 @@ def export_I1195(
             # TODO Does the change in priority() above resolve?
             return candidate
 
-        # TODO This is currently too slow to be practical
-        # What are some hypothetical ways in which this could be sped up?
+        # Optimisations (a)-(e) applied. The candidate space is now generated once per
+        #   applicability-set (build_candidates) rather than every greedy iteration, with
+        #   rejected candidates cached across iterations.
+        # Possible further work:
         # - Generate candidate paths in highest filesystem level only;
         #   if zero plausible candidates are found, choose all directories at the next level down
-        # - Limit generation of plausible filesystem paths
-        #   Currently every data file generates a full set of all possible entity subsets,
-        #   and are relying on rejection of redundant entries after they have been generated;
-        #   better would be to generate all possible sets of entities based on all data files
-        #   in a single go
 
         new_json_data: dict[BIDSFilePath, dict] = {}
         # Optimisation (d): many distinct (key, value) pairs apply to exactly the
@@ -319,13 +342,16 @@ def export_I1195(
         for keyvalue, datapaths in revkeyvalue.items():
             keyvalue_groups.setdefault(frozenset(datapaths), []).append(keyvalue)
         for datapath_set, keyvalues in keyvalue_groups.items():
-            # Item iterated over should remain immutable
-            remaining_datapaths = list(datapath_set)
+            # Optimisation (e): build this applicability-set's candidate space once,
+            #   and carry a rejected-candidate cache across the greedy iterations.
+            candidates = build_candidates(datapath_set, ".json")
+            rejected: set[BIDSFilePath] = set()
+            remaining_set = set(datapath_set)
             # Exit loop once there are no data files left to which these key-value
             #   metadata should be ascribed
-            while remaining_datapaths:
+            while remaining_set:
                 metapath: BIDSFilePath = best_metadata_path(
-                    remaining_datapaths, ".json"
+                    remaining_set, candidates, rejected
                 )
                 if metapath in new_json_data:
                     target = new_json_data[metapath]
@@ -334,36 +360,39 @@ def export_I1195(
                 for key, value in keyvalues:
                     assert key not in target
                     target[key] = value
-                old_count: int = len(remaining_datapaths)
+                old_count: int = len(remaining_set)
                 metapath_parent_str: str = str(metapath.relpath.parent)
-                remaining_datapaths = [
+                remaining_set = {
                     item
-                    for item in remaining_datapaths
+                    for item in remaining_set
                     if not is_applicable(
                         item, metapath, parent_sets[item], metapath_parent_str
                     )
-                ]
-                assert len(remaining_datapaths) < old_count
+                }
+                assert len(remaining_set) < old_count
 
         new_other_data: dict[BIDSFilePath] = {}
         for (extension, contents), datapaths in revother.items():
-            remaining_datapaths = list(datapaths)
-            while remaining_datapaths:
+            # Optimisation (e): as above, once-built candidate space + rejection cache.
+            candidates = build_candidates(datapaths, extension)
+            rejected = set()
+            remaining_set = set(datapaths)
+            while remaining_set:
                 metapath: BIDSFilePath = best_metadata_path(
-                    remaining_datapaths, extension
+                    remaining_set, candidates, rejected
                 )
                 assert metapath not in new_other_data
                 new_other_data[metapath] = contents
-                old_count: int = len(remaining_datapaths)
+                old_count: int = len(remaining_set)
                 metapath_parent_str: str = str(metapath.relpath.parent)
-                remaining_datapaths = [
+                remaining_set = {
                     item
-                    for item in remaining_datapaths
+                    for item in remaining_set
                     if not is_applicable(
                         item, metapath, parent_sets[item], metapath_parent_str
                     )
-                ]
-                assert len(remaining_datapaths) < old_count
+                }
+                assert len(remaining_set) < old_count
 
         # (
         #     Stats(profile)
