@@ -1,5 +1,5 @@
-from cProfile import Profile
-from pstats import SortKey, Stats
+# from cProfile import Profile
+# from pstats import SortKey, Stats
 
 import csv
 import json
@@ -7,6 +7,7 @@ from itertools import chain, combinations
 import logging
 import pathlib
 import shutil
+
 # import sys
 import numpy
 
@@ -35,10 +36,7 @@ COPY_UNMODIFIED = [
 ]
 
 
-CONVERSION_RULESETS = [
-    "forbidden",
-    "I1195"
-]
+CONVERSION_RULESETS = ["forbidden", "I1195"]
 
 
 def export_forbidden(
@@ -73,7 +71,7 @@ def export_I1195(
     out_dir: pathlib.Path,
 ) -> None:
 
-    with Profile() as profile:
+    if True:  # profiling disabled: with Profile() as profile:
 
         for datapath, by_extension in metadata.items():
             parent = out_dir / datapath.relpath.parent
@@ -145,11 +143,6 @@ def export_I1195(
         # - Try JIT compilation: https://numba.pydata.org/
         #
 
-
-
-
-
-
         def best_metadata_path(
             remaining_datapaths: list[BIDSFilePath], extension: str
         ) -> BIDSFilePath:
@@ -176,7 +169,9 @@ def export_I1195(
                 for parent in datapath.relpath.parents:
                     for entities in all_subsets(datapath.entities):
                         candidates.add(
-                            BIDSFilePath(parent, list(entities), datapath.suffix, extension)
+                            BIDSFilePath(
+                                parent, list(entities), datapath.suffix, extension
+                            )
                         )
             refined_candidates: BIDSFilePathList = {}
             max_matches: int = 0
@@ -235,7 +230,9 @@ def export_I1195(
             remaining_datapaths = list(datapaths)
             # Exit loop once there are no data files left to which this key-value metadata should be ascribed
             while remaining_datapaths:
-                metapath: BIDSFilePath = best_metadata_path(remaining_datapaths, ".json")
+                metapath: BIDSFilePath = best_metadata_path(
+                    remaining_datapaths, ".json"
+                )
                 if metapath in new_json_data:
                     assert key not in new_json_data[metapath]
                     new_json_data[metapath][key] = value
@@ -253,7 +250,9 @@ def export_I1195(
         for (extension, contents), datapaths in revother.items():
             remaining_datapaths = list(datapaths)
             while remaining_datapaths:
-                metapath: BIDSFilePath = best_metadata_path(remaining_datapaths, extension)
+                metapath: BIDSFilePath = best_metadata_path(
+                    remaining_datapaths, extension
+                )
                 assert metapath not in new_other_data
                 new_other_data[metapath] = contents
                 old_count: int = len(remaining_datapaths)
@@ -264,12 +263,12 @@ def export_I1195(
                 ]
                 assert len(remaining_datapaths) < old_count
 
-        (
-            Stats(profile)
-            .strip_dirs()
-            .sort_stats(SortKey.CUMULATIVE)
-            .print_stats()
-        )
+        # (
+        #     Stats(profile)
+        #     .strip_dirs()
+        #     .sort_stats(SortKey.CUMULATIVE)
+        #     .print_stats()
+        # )
 
     for new_json_filepath, keyvalues in new_json_data.items():
         with open(out_dir / new_json_filepath.relpath, "w", encoding="utf-8") as f:
