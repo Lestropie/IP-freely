@@ -298,19 +298,42 @@ def export_I1195(
         #   in a single go
 
         new_json_data: dict[BIDSFilePath, dict] = {}
-        for (key, value), datapaths in revkeyvalue.items():
+        # Optimisation (d): many distinct (key, value) pairs apply to exactly the
+        #   same set of data files (e.g. every key sharing one sidecar). The greedy
+        #   best_metadata_path search depends ONLY on that set of data files (plus the
+        #   fixed ".json" extension and the global parent_sets/datafile_index/metadata
+        #   indices), so its result — the sequence of chosen metapaths and which data
+        #   files each covers — is identical for every key-value sharing an identical
+        #   applicable-file set. Group the key-values by that set (a frozenset of
+        #   BIDSFilePath, which is hashable — hash == relpath.__hash__) and solve ONCE
+        #   per distinct set, attaching every key-value in the group to the resulting
+        #   metapath(s) exactly as the per-key loop would have.
+        # Guard: group STRICTLY by equal sets. Two key-values with even slightly
+        #   different applicable-file sets keep separate solves — merging them would
+        #   place a key on a path that over- or under-covers it and break re-resolution.
+        # Invariant: within one group every key is distinct. For a fixed key, distinct
+        #   values partition the data files (a data file resolves one value per key), so
+        #   two (key, value) entries with the same key have DISJOINT datapaths and can
+        #   never land in the same frozenset — the assert below therefore still holds.
+        keyvalue_groups: dict["frozenset[BIDSFilePath]", list[tuple]] = {}
+        for keyvalue, datapaths in revkeyvalue.items():
+            keyvalue_groups.setdefault(frozenset(datapaths), []).append(keyvalue)
+        for datapath_set, keyvalues in keyvalue_groups.items():
             # Item iterated over should remain immutable
-            remaining_datapaths = list(datapaths)
-            # Exit loop once there are no data files left to which this key-value metadata should be ascribed
+            remaining_datapaths = list(datapath_set)
+            # Exit loop once there are no data files left to which these key-value
+            #   metadata should be ascribed
             while remaining_datapaths:
                 metapath: BIDSFilePath = best_metadata_path(
                     remaining_datapaths, ".json"
                 )
                 if metapath in new_json_data:
-                    assert key not in new_json_data[metapath]
-                    new_json_data[metapath][key] = value
+                    target = new_json_data[metapath]
                 else:
-                    new_json_data[metapath] = {key: value}
+                    target = new_json_data[metapath] = {}
+                for key, value in keyvalues:
+                    assert key not in target
+                    target[key] = value
                 old_count: int = len(remaining_datapaths)
                 metapath_parent_str: str = str(metapath.relpath.parent)
                 remaining_datapaths = [
