@@ -36,7 +36,24 @@ def is_applicable_nameonly(datafile: BIDSFilePath, metafile: BIDSFilePath) -> bo
     return True
 
 
-def is_applicable(datafile: BIDSFilePath, metafile: BIDSFilePath) -> bool:
-    if not metafile.relpath.parent in datafile.relpath.parents:
-        return False
+def is_applicable(
+    datafile: BIDSFilePath,
+    metafile: BIDSFilePath,
+    datafile_parent_set: "frozenset[str] | None" = None,
+    metafile_parent_str: "str | None" = None,
+) -> bool:
+    # Fast path: when the caller supplies a precomputed hashed set of the data
+    #   file's ancestor-directory strings, the parent-directory test is an O(1)
+    #   string-set membership instead of iterating a pathlib parents sequence.
+    # Note: datafile.relpath.parents includes the immediate parent as parents[0],
+    #   so frozenset(map(str, datafile.relpath.parents)) covers the same-directory
+    #   case identically; the two branches below are behaviourally equivalent.
+    if datafile_parent_set is None:
+        if not metafile.relpath.parent in datafile.relpath.parents:
+            return False
+    else:
+        if metafile_parent_str is None:
+            metafile_parent_str = str(metafile.relpath.parent)
+        if metafile_parent_str not in datafile_parent_set:
+            return False
     return is_applicable_nameonly(datafile, metafile)

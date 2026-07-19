@@ -79,6 +79,15 @@ def export_I1195(
                 parent.mkdir(parents=True)
             shutil.copyfile(bids_dir / datapath.relpath, out_dir / datapath.relpath)
 
+        # Precompute, once per data file, the hashed set of its ancestor-directory
+        #   strings. relpath.parents includes the immediate parent as parents[0],
+        #   so this covers the same-directory case exactly. Threaded into
+        #   is_applicable() below to replace per-call pathlib.parents iteration.
+        parent_sets: dict[BIDSFilePath, "frozenset[str]"] = {
+            datapath: frozenset(map(str, datapath.relpath.parents))
+            for datapath in metadata
+        }
+
         # First step: For every unique key-value pair, generate a list of BIDSFilePaths to which it applies
         # Note: This applies exclusively to JSON; will need to do separate for non-JSON
         revkeyvalue: dict[tuple, BIDSFilePathList] = {}
@@ -181,13 +190,26 @@ def export_I1195(
             refined_candidates: BIDSFilePathList = {}
             max_matches: int = 0
             for candidate in candidates:
+                # Stringify the candidate's parent directory once per candidate,
+                #   not once per data file.
+                candidate_parent_str: str = str(candidate.relpath.parent)
                 candidate_eligible: bool = True
                 datafile_matches: int = 0
                 for datapath in metadata:
                     if datapath in remaining_set:
-                        if is_applicable(datapath, candidate):
+                        if is_applicable(
+                            datapath,
+                            candidate,
+                            parent_sets[datapath],
+                            candidate_parent_str,
+                        ):
                             datafile_matches += 1
-                    elif is_applicable(datapath, candidate):
+                    elif is_applicable(
+                        datapath,
+                        candidate,
+                        parent_sets[datapath],
+                        candidate_parent_str,
+                    ):
                         candidate_eligible = False
                         break
                 if candidate_eligible:
@@ -244,10 +266,13 @@ def export_I1195(
                 else:
                     new_json_data[metapath] = {key: value}
                 old_count: int = len(remaining_datapaths)
+                metapath_parent_str: str = str(metapath.relpath.parent)
                 remaining_datapaths = [
                     item
                     for item in remaining_datapaths
-                    if not is_applicable(item, metapath)
+                    if not is_applicable(
+                        item, metapath, parent_sets[item], metapath_parent_str
+                    )
                 ]
                 assert len(remaining_datapaths) < old_count
 
@@ -261,10 +286,13 @@ def export_I1195(
                 assert metapath not in new_other_data
                 new_other_data[metapath] = contents
                 old_count: int = len(remaining_datapaths)
+                metapath_parent_str: str = str(metapath.relpath.parent)
                 remaining_datapaths = [
                     item
                     for item in remaining_datapaths
-                    if not is_applicable(item, metapath)
+                    if not is_applicable(
+                        item, metapath, parent_sets[item], metapath_parent_str
+                    )
                 ]
                 assert len(remaining_datapaths) < old_count
 
