@@ -127,9 +127,12 @@ class BIDSFilePath:
         #   where metadata files don't need a suffix,
         #   anything that doesn't have a suffix
         #   should probably be before anything that does
-        if self.relpath.parent in other.relpath.parents[1:]:
+        # NB: pathlib's parents sequence does not support slicing before
+        #   Python 3.10, so materialise it as a list before dropping the
+        #   immediate parent (parents[0]).
+        if self.relpath.parent in list(other.relpath.parents)[1:]:
             return True
-        if other.relpath.parent in self.relpath.parents[1:]:
+        if other.relpath.parent in list(self.relpath.parents)[1:]:
             return False
         if self.relpath.parent != other.relpath.parent:
             # Don't bother trying to find the first common parent;
