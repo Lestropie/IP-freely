@@ -11,6 +11,7 @@ import shutil
 # import sys
 import numpy
 
+from ipfreely import BIDSError
 from ipfreely.extensions import EXTENSIONS
 from ipfreely.filepath import BIDSFilePath
 from ipfreely.filepath import BIDSFilePathList
@@ -827,6 +828,23 @@ def export(
         raise TypeError(
             "Only rulesets currently supported for conversion are: "
             + str(CONVERSION_RULESETS)
+        )
+
+    # Every output metadata file path is derived from a data file's suffix (its
+    #   suffix must match that of the data file it describes), so a suffixless
+    #   data file would yield a suffixless output metadata path. Output metadata
+    #   files must always carry a suffix, and a data file lacking a datatype
+    #   suffix is malformed regardless of ruleset, so refuse to proceed.
+    suffixless_datafiles = [
+        datapath for datapath in metadata if datapath.suffix is None
+    ]
+    if suffixless_datafiles:
+        raise BIDSError(
+            "Cannot determine suffixed output metadata file paths:"
+            f" {len(suffixless_datafiles)} data"
+            f" file{'s' if len(suffixless_datafiles) > 1 else ''}"
+            " lacking a datatype suffix:"
+            f" [{'; '.join(map(str, suffixless_datafiles))}]"
         )
 
     out_dir.mkdir()

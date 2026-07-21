@@ -25,6 +25,10 @@ KeyvalueOverride = Enum("OverrideVerbosity", "permitted warning violation")
 @dataclass
 class Ruleset:
     name: str
+    # Whether metadata files are required to possess a suffix.
+    # Data files always require a datatype suffix, in every ruleset; this flag
+    #   governs metadata files only. Set False by rulesets that permit a metadata
+    #   file whose stem consists entirely of entities with no trailing suffix.
     compulsory_suffix: bool
     json_inheritance_within_dir: InheritanceWithinDir
     nonjson_inheritance_within_dir: InheritanceWithinDir
@@ -39,7 +43,8 @@ RULESETS = {
     # BIDS Inheritance Principle from 1.1.2 until 1.6.x:
     "1.1.x": Ruleset(
         "1.1.x",
-        # Suffix must be present in all files, including metadata files
+        # Metadata files are required to possess a suffix
+        #   (data files always require a datatype suffix, in every ruleset)
         True,
         # Data file can't have more than one applicable JSON in a single directory
         InheritanceWithinDir.unique,
@@ -141,6 +146,33 @@ RULESETS = {
         # Still possible for metadata files to not be sidecars
         True,
         # No proposed change to metadata file path location check
+        MetaPathCheck.ver170,
+    ),
+    # Prospective future ruleset under discussion in the BIDS 2.0 development
+    #   repository, Issue #75.
+    # Identical to I1195 in every inheritance rule, with a single key distinction:
+    #   metadata files are NO LONGER required to possess a trailing suffix. A
+    #   metadata file's stem may consist entirely of entities (e.g.
+    #   "sub-01_ses-1.json"), in which case it is applicable to any data file
+    #   whose entities are a superset, irrespective of the data file's suffix.
+    #   Data files still require a datatype suffix (enforced in every ruleset).
+    "BIDS2I75": Ruleset(
+        "BIDS2I75",
+        # Key distinction from I1195: metadata files need NOT carry a suffix
+        False,
+        # All remaining rules are identical to I1195 ...
+        # Any number of applicable JSONs in one directory
+        InheritanceWithinDir.any,
+        # Non-JSON metadata files must still be unambiguously orderable
+        InheritanceWithinDir.ordered,
+        # No JSON field overloading
+        KeyvalueOverride.violation,
+        # No change to multi-inheritance
+        True,
+        True,
+        # Still possible for metadata files to not be sidecars
+        True,
+        # No change to metadata file path location check
         MetaPathCheck.ver170,
     ),
     # Precluding any and all use of Inheritance Principle, expressed as a ruleset

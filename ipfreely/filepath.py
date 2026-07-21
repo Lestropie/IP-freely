@@ -59,11 +59,18 @@ class BIDSFilePath:
             self.stem = str(self.stem)
             self.extension = "".join(self.relpath.suffixes)
             split_stem = self.stem.split("_")
-            if len(split_stem) == 1:
+            # The final underscore-separated token is the suffix, UNLESS it is
+            #   itself an entity (contains a "-"), in which case the file has no
+            #   suffix at all: its stem consists entirely of entities. This holds
+            #   whether the stem is a single token (e.g. "sub-01") or several
+            #   (e.g. "sub-01_ses-1"). Data files always carry a datatype suffix;
+            #   only metadata files may have a suffixless stem, and only under
+            #   rulesets that permit it (enforced downstream, not here).
+            if "-" in split_stem[-1]:
+                self.suffix = None
+            elif len(split_stem) == 1:
                 self.suffix = split_stem[0]
                 split_stem = ""
-            elif "-" in split_stem[-1]:
-                self.suffix = None
             else:
                 self.suffix = split_stem[-1]
                 split_stem = split_stem[:-1]
@@ -81,7 +88,7 @@ class BIDSFilePath:
             and isinstance(args[0], pathlib.Path)
             and isinstance(args[1], list)
             and all(isinstance(item, BIDSEntity) for item in args[1])
-            and isinstance(args[2], (str, None))
+            and isinstance(args[2], (str, type(None)))
             and isinstance(args[3], str)
             and args[3].startswith(".")
         ):
@@ -98,8 +105,17 @@ class BIDSFilePath:
         raise TypeError(f"Unrecognised initialisation of filepath.BIDSFilePath: {args}")
 
     def check(self, ruleset: Ruleset) -> None:
-        if ruleset.compulsory_suffix and self.suffix is None:
-            raise BIDSError(f"Absent suffix in BIDS file {self.relpath}")
+        # A data file must always carry a datatype suffix; a metadata file must
+        #   too, unless the ruleset explicitly permits suffixless metadata files
+        #   (compulsory_suffix == False).
+        if self.suffix is None and (
+            not self.is_metadata() or ruleset.compulsory_suffix
+        ):
+            raise BIDSError(
+                f"BIDS {'metadata' if self.is_metadata() else 'data'} file"
+                f" {self.relpath} lacks a required suffix"
+                f" under ruleset {ruleset.name}"
+            )
 
     def has_entity(self, key: str) -> bool:
         return any(entity[0] == key for entity in self.entities)
@@ -161,11 +177,19 @@ class BIDSFilePathList(list[BIDSFilePath]):
         super().__init__(*args, **kwargs)
 
     def has_unambiguous_nearest(self) -> bool:
+        # The nearest (last, self[-1]) metadata file is unambiguously nearest if
+        #   it is distinguishable from the second-nearest (self[-2]) by any of the
+        #   within-directory __lt__ ordering keys: deeper in the filesystem,
+        #   differing in suffix presence, or carrying more entities. Suffix
+        #   presence is a genuine discriminator now that suffixless metadata files
+        #   are possible (a suffixless file sorts before an otherwise-equal
+        #   suffixed one). NB: both comparisons are against self[-1] (the nearest);
+        #   the previous self[1] was a bug for lists of three or more files.
         return (
             len(self) == 1
             or len(self[-2].relpath.parents) < len(self[-1].relpath.parents)
-            or bool(self[-2].suffix) != bool(self[1].suffix)
-            or len(self[-2].entities) < len(self[1].entities)
+            or bool(self[-2].suffix) != bool(self[-1].suffix)
+            or len(self[-2].entities) < len(self[-1].entities)
         )
 
     def has_order_ambiguity(self, inheritance_within_dir: InheritanceWithinDir) -> bool:
@@ -196,8 +220,16 @@ class BIDSFilePathList(list[BIDSFilePath]):
             #   contain the same number of entities:
             # Generate a set containing all of the unique filename entity counts,
             #   and make sure that there are as many counts as there are files
+            # Two files at one filesystem level are unambiguously orderable if
+            #   they differ in either suffix presence or entity count (the
+            #   within-directory __lt__ ordering keys). Keying solely on entity
+            #   count would spuriously flag a suffixless and a suffixed file of
+            #   equal entity count as ambiguous, even though __lt__ orders them.
             if len(
-                set(len(metafile.entities) for metafile in metafiles_within_dir)
+                set(
+                    (bool(metafile.suffix), len(metafile.entities))
+                    for metafile in metafiles_within_dir
+                )
             ) < len(metafiles_within_dir):
                 return True
         return False
@@ -217,7 +249,12 @@ class BIDSFilePathList(list[BIDSFilePath]):
         # - Include list of paths within that group
         @dataclass
         class Group:
-            depth: tuple[int, int]
+            # (parent count, suffix present, entity count): entries sharing a
+            #   depth are ties under __lt__ (arbitrary relative order). Suffix
+            #   presence is part of the key because a suffixless file is ordered
+            #   strictly before an otherwise-equal suffixed one, so the two must
+            #   not be collapsed into a single order-agnostic tie group.
+            depth: tuple[int, bool, int]
             index: int
             paths: BIDSFilePathList
 
@@ -225,18 +262,22 @@ class BIDSFilePathList(list[BIDSFilePath]):
         data_ref: list[Group] = []
         for index, filepath in enumerate(self):
             parent_count: int = len(filepath.relpath.parents)
+            suffix_present: bool = filepath.suffix is not None
             entity_count: int = len(filepath.entities)
-            if data_self and (parent_count, entity_count) == data_self[-1].depth:
+            depth = (parent_count, suffix_present, entity_count)
+            if data_self and depth == data_self[-1].depth:
                 data_self[-1].paths.append(filepath)
             else:
-                data_self.append(Group((parent_count, entity_count), index, [filepath]))
+                data_self.append(Group(depth, index, [filepath]))
         for index, filepath in enumerate(ref):
             parent_count: int = len(filepath.relpath.parents)
+            suffix_present: bool = filepath.suffix is not None
             entity_count: int = len(filepath.entities)
-            if data_ref and (parent_count, entity_count) == data_ref[-1].depth:
+            depth = (parent_count, suffix_present, entity_count)
+            if data_ref and depth == data_ref[-1].depth:
                 data_ref[-1].paths.append(filepath)
             else:
-                data_ref.append(Group((parent_count, entity_count), index, [filepath]))
+                data_ref.append(Group(depth, index, [filepath]))
         if len(data_self) != len(data_ref):
             return False
         for group_self, group_ref in zip(data_self, data_ref):
