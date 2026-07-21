@@ -1,0 +1,31 @@
+{
+    "ConsistencyInfo": "N4_VE11E_LATEST_20181129",
+    "DeviceSerialNumber": "1",
+    "InstitutionAddress": "Institution One Address",
+    "InstitutionName": "Institution One",
+    "InstitutionalDepartmentName": "Institution One Department",
+    "ManufacturersModelName": "Prisma",
+    "ProcedureStepDescription": "MR Brain",
+    "StationName": "S1",
+    "TxRefAmp": 228.481,
+    "ImageOrientationPatientDICOM": [
+        0.999978,
+        -0.0033432,
+        -0.00578849,
+        3.95503e-08,
+        0.86595,
+        -0.500131
+    ],
+    "ImageOrientationText": "Tra>Cor(-30.0)>Sag(-0.4)",
+    "ShimSetting": [
+        2573,
+        -11302,
+        -11240,
+        398,
+        19,
+        27,
+        -80,
+        88
+    ],
+    "VendorReportedEchoSpacing": 0.00054
+}

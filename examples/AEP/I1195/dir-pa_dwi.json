@@ -1,5 +1,5 @@
 {
-    "SeriesDescription": "DWI_Ax_AP_51Dir_InvROPE-",
+    "PhaseEncodingDirection": "j",
     "ProtocolName": "DWI_Ax_AP_51Dir_InvROPE-",
-    "PhaseEncodingDirection": "j"
+    "SeriesDescription": "DWI_Ax_AP_51Dir_InvROPE-"
 }

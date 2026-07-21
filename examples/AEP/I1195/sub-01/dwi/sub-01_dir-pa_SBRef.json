@@ -1,0 +1,25 @@
+{
+    "ImageOrientationPatientDICOM": [
+        0.999317,
+        -0.0032517,
+        -0.0368205,
+        1.457e-08,
+        0.996123,
+        -0.0879693
+    ],
+    "ImageOrientationText": "Tra>Cor(-5.0)>Sag(-2.1)",
+    "ShimSetting": [
+        2569,
+        -11301,
+        -11269,
+        284,
+        -12,
+        -153,
+        -50,
+        72
+    ],
+    "AcquisitionTime": "13:53:43.687500",
+    "ImagingFrequency": 123.230687,
+    "SAR": 0.1307,
+    "WipMemBlock": "a915fb46-a764-4cad-a181-7c836bfc929e||Sequence: R016 ve11e/master r/434b28f1; Aug  7 2019 19:06:17 by eja"
+}

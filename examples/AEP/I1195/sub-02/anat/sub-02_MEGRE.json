@@ -1,0 +1,24 @@
+{
+    "ConsistencyInfo": "N4_VE11C_LATEST_20160120",
+    "DeviceSerialNumber": "2",
+    "InstitutionAddress": "Institution Two Address",
+    "InstitutionName": "Institution Two",
+    "InstitutionalDepartmentName": "Institution Two Department",
+    "ManufacturersModelName": "Prisma_fit",
+    "ProcedureStepDescription": "2019_MBC_PROTOCOLS_VE11C^SB.2020.353 AEP study - 64 Channel",
+    "StationName": "S2",
+    "ReceiveCoilActiveElements": "HC1-7;NC1",
+    "ImagingFrequency": 123.237833,
+    "SAR": 0.00854215,
+    "ShimSetting": [
+        -1272,
+        4850,
+        -10985,
+        350,
+        -9,
+        -137,
+        -85,
+        5
+    ],
+    "TxRefAmp": 219.935
+}

@@ -292,26 +292,47 @@ def _export_greedy_merge(
                     (),
                 )
                 for datapath in relevant_datapaths:
-                    if datapath in remaining_set:
-                        if is_applicable(
-                            datapath,
-                            candidate,
-                            parent_sets[datapath],
-                            candidate_parent_str,
-                        ):
-                            datafile_matches += 1
-                    elif is_applicable(
+                    # `relevant_datapaths` is EXACTLY the candidate's name-applicable
+                    #   set (is_applicable_nameonly == True for every member). So the
+                    #   is_applicable() call here reduces to the filesystem-location
+                    #   test alone.
+                    if not is_applicable(
                         datapath,
                         candidate,
                         parent_sets[datapath],
                         candidate_parent_str,
                     ):
+                        # Name-applicable but the candidate is NOT in this data file's
+                        #   filesystem path. Under MetaPathCheck.ver170 that is a
+                        #   "matches in name but not in path" violation (evaluate.py's
+                        #   bad_metadata_path check), which makes the candidate an
+                        #   invalid metadata-file location outright — independent of
+                        #   whether the data file is still remaining. The greedy
+                        #   exporter previously used is_applicable() (name AND path) for
+                        #   the leak check only, so it would push a file DOWN into a
+                        #   subdirectory to dodge a path-leak while still name-matching
+                        #   data files outside that subtree; that produced ver170
+                        #   violations. Rejecting here forbids such placements, forcing
+                        #   the field onto a pattern whose entire name-applicable set
+                        #   lies within its subtree.
+                        candidate_eligible = False
+                        break
+                    if datapath in remaining_set:
+                        datafile_matches += 1
+                    else:
+                        # Path-applicable to a data file that is NOT in `remaining_set`
+                        #   (already covered this solve, or carrying a different value):
+                        #   a second applicable metadata file for the same key, i.e. an
+                        #   override/leak. Forbidden under the merge rulesets.
                         candidate_eligible = False
                         break
                 if not candidate_eligible:
-                    # Cache this eligibility rejection: an external match holds for
-                    #   every later, smaller `remaining` in this solve, so this
-                    #   candidate need never be re-tested.
+                    # Cache this eligibility rejection. Both rejection causes are
+                    #   monotonic across the shrinking `remaining_set`: the ver170
+                    #   name-but-not-path match depends only on the candidate and the
+                    #   full data-file set, and an external path-leak match persists for
+                    #   every later, smaller `remaining`. So the candidate need never be
+                    #   re-tested within this solve.
                     rejected.add(candidate)
                     continue
                 if datafile_matches > max_matches:

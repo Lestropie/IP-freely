@@ -1,6 +1,6 @@
 {
-    "MRAcquisitionType": "2D",
     "EchoTime": 0.083,
+    "MRAcquisitionType": "2D",
     "ImageType": [
         "ORIGINAL",
         "PRIMARY",

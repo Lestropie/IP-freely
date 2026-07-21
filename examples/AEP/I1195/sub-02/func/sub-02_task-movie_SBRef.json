@@ -1,0 +1,26 @@
+{
+    "ImageOrientationPatientDICOM": [
+        1,
+        0,
+        0,
+        0,
+        0.866025,
+        -0.5
+    ],
+    "ImageOrientationText": "Tra>Cor(-30.0)",
+    "ShimSetting": [
+        -1265,
+        4850,
+        -10925,
+        504,
+        -3,
+        -88,
+        -120,
+        13
+    ],
+    "ImagingFrequency": 123.237838,
+    "ProtocolName": "fMRI_AxObl_AP_Movie-",
+    "SAR": 0.0233866,
+    "WipMemBlock": "535b5c47-f643-4daa-87ba-8c2ec5c830ec||Sequence: R016 ve11c/master r/e634e98; Dec 19 2017 11:00:25 by eja",
+    "SeriesDescription": "fMRI_AxObl_AP_Movie-_SBRef"
+}

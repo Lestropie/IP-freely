@@ -1,0 +1,25 @@
+{
+    "ReceiveCoilActiveElements": "HC1-7;NC1",
+    "ImagingFrequency": 123.230689,
+    "ImageOrientationPatientDICOM": [
+        0,
+        1,
+        0,
+        -0.0244322,
+        0,
+        -0.999701
+    ],
+    "ImageOrientationText": "Sag>Tra(1.4)",
+    "AcquisitionTime": "13:24:25.560000",
+    "SAR": 0.0473901,
+    "ShimSetting": [
+        2566,
+        -11311,
+        -11285,
+        205,
+        -16,
+        -322,
+        -24,
+        74
+    ]
+}

@@ -1,0 +1,22 @@
+{
+    "TxRefAmp": 228.286,
+    "ImageOrientationPatientDICOM": [
+        1,
+        0,
+        0,
+        0,
+        0.866025,
+        -0.5
+    ],
+    "ImageOrientationText": "Tra>Cor(-30.0)",
+    "ShimSetting": [
+        -1265,
+        4850,
+        -10925,
+        504,
+        -3,
+        -88,
+        -120,
+        13
+    ]
+}

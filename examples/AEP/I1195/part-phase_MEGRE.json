@@ -1,12 +1,12 @@
 {
+    "EchoTime1": 0.00584,
+    "EchoTime2": 0.01063,
+    "SeriesNumber": 5,
     "ImageType": [
         "ORIGINAL",
         "PRIMARY",
         "P",
         "ND",
         "PHASE"
-    ],
-    "SeriesNumber": 5,
-    "EchoTime1": 0.00584,
-    "EchoTime2": 0.01063
+    ]
 }
