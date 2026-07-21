@@ -57,7 +57,7 @@ def export_forbidden(
                     numpy.savetxt(f, numpy.array(content))
                 else:
                     if extension == ".json":
-                        json.dump(sorted(content), f, indent=4)
+                        json.dump(content, f, indent=4, sort_keys=True)
                     elif extension == ".tsv":
                         for row in content:
                             f.write("\t".join(row) + "\n")
