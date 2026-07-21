@@ -1,0 +1,11 @@
+{
+    "ImageOrientationPatientDICOM": [
+        0.999942,
+        0.0107392,
+        3.66753e-10,
+        -0.00484568,
+        0.451189,
+        -0.892415
+    ],
+    "ImageOrientationText": "Cor>Tra(-26.8)>Sag(0.5)"
+}

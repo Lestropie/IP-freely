@@ -1,0 +1,20 @@
+{
+    "ManufacturersModelName": "Prisma",
+    "InstitutionName": "Institution One",
+    "InstitutionalDepartmentName": "Institution One Department",
+    "InstitutionAddress": "Institution One Address",
+    "DeviceSerialNumber": "1",
+    "StationName": "S1",
+    "ProcedureStepDescription": "MR Brain",
+    "TxRefAmp": 228.481,
+    "ConsistencyInfo": "N4_VE11E_LATEST_20181129",
+    "ImageOrientationPatientDICOM": [
+        0,
+        1,
+        0,
+        -0.0244322,
+        0,
+        -0.999701
+    ],
+    "ImageOrientationText": "Sag>Tra(1.4)"
+}

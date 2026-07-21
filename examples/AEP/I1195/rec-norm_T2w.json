@@ -1,0 +1,16 @@
+{
+    "MRAcquisitionType": "2D",
+    "EchoTime": 0.083,
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "M",
+        "ND",
+        "SIMULATED",
+        "WIP899C",
+        "SH4",
+        "2",
+        "FIL"
+    ],
+    "SeriesNumber": 14
+}

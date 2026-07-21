@@ -1,0 +1,24 @@
+{
+    "MatrixCoilMode": "SENSE",
+    "ScanOptions": "IR",
+    "SequenceName": "WIP_cmp3d1_16ns",
+    "SliceThickness": 1,
+    "EchoTime": 0.00288,
+    "RepetitionTime": 5,
+    "PulseSequenceDetails": "%CustomerSeq%\\cstfl_wip925b",
+    "WipMemBlock": "WIP_Identifier: WIP#925B",
+    "PercentPhaseFOV": 93.75,
+    "PhaseEncodingSteps": 240,
+    "AcquisitionMatrixPE": 240,
+    "ReconMatrixPE": 240,
+    "PixelBandwidth": 240,
+    "DwellTime": 8.1e-06,
+    "ImageType": [
+        "DERIVED",
+        "PRIMARY",
+        "M",
+        "ND"
+    ],
+    "RawImage": false,
+    "ImageComments": "Simulated T1 Contrast"
+}

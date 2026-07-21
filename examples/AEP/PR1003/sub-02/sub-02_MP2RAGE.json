@@ -1,0 +1,33 @@
+{
+    "ConsistencyInfo": "N4_VE11C_LATEST_20160120",
+    "DeviceSerialNumber": "2",
+    "ImageOrientationPatientDICOM": [
+        0,
+        1,
+        0,
+        0.0191974,
+        0,
+        -0.999816
+    ],
+    "ImageOrientationText": "Sag>Tra(-1.1)",
+    "ImagingFrequency": 123.23786,
+    "InstitutionAddress": "Institution Two Address",
+    "InstitutionName": "Institution Two",
+    "InstitutionalDepartmentName": "Institution Two Department",
+    "ManufacturersModelName": "Prisma_fit",
+    "ProcedureStepDescription": "2019_MBC_PROTOCOLS_VE11C^SB.2020.353 AEP study - 64 Channel",
+    "ProtocolName": "T1map_MP2RAGE_Sag_AP-",
+    "SAR": 0.016706,
+    "ShimSetting": [
+        -1286,
+        4782,
+        -11046,
+        196,
+        -45,
+        -448,
+        -39,
+        -33
+    ],
+    "StationName": "S2",
+    "TxRefAmp": 228.286
+}

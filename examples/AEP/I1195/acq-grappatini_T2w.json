@@ -1,0 +1,19 @@
+{
+    "RefLinesPE": 24,
+    "MatrixCoilMode": "GRAPPA",
+    "ParallelReductionFactorInPlane": 2,
+    "BaseResolution": 256,
+    "PercentPhaseFOV": 93.75,
+    "PhaseEncodingSteps": 240,
+    "AcquisitionMatrixPE": 240,
+    "SequenceVariant": "SP",
+    "SliceThickness": 3.6,
+    "SpacingBetweenSlices": 3.96,
+    "RepetitionTime": 3.91,
+    "FlipAngle": 180,
+    "EchoTrainLength": 16,
+    "ReconMatrixPE": 480,
+    "PixelBandwidth": 220,
+    "DwellTime": 8.9e-06,
+    "ImageComments": "Simulated TSE Contrast"
+}

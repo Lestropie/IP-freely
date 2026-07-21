@@ -1,0 +1,22 @@
+{
+    "AcquisitionTime": "14:17:55.565000",
+    "EchoNumber": 1,
+    "EchoTime": 0.0134,
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "M",
+        "MB",
+        "TE1",
+        "ND",
+        "NORM",
+        "MOSAIC"
+    ],
+    "ImagingFrequency": 123.230691,
+    "ProtocolName": "fMRI_AxObl_AP_Movie-CMRR",
+    "SAR": 0.0244673,
+    "SeriesDescription": "fMRI_AxObl_AP_Movie-CMRR",
+    "SeriesNumber": 53,
+    "TaskName": "movie",
+    "WipMemBlock": "03c15b85-f186-4521-ad4f-7a86abd8cde6||Sequence: R016 ve11e/master r/434b28f1; Aug  7 2019 18:53:46 by eja"
+}

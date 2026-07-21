@@ -1,0 +1,25 @@
+{
+    "AcquisitionTime": "15:03:40.822500",
+    "ImageOrientationPatientDICOM": [
+        0.999488,
+        0.0152811,
+        0.0281278,
+        -1.90219e-10,
+        0.878699,
+        -0.477376
+    ],
+    "ImageOrientationText": "Tra>Cor(-28.5)>Sag(1.8)",
+    "ImagingFrequency": 123.237848,
+    "SAR": 0.303106,
+    "ShimSetting": [
+        -1222,
+        4919,
+        -10923,
+        326,
+        -6,
+        -1281,
+        -547,
+        -176
+    ],
+    "TxRefAmp": 228.286
+}

@@ -1,0 +1,15 @@
+{
+    "AcquisitionTime": "13:56:58.512500",
+    "FlipAngle": 4,
+    "ImageComments": "Inv1 Image",
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "M",
+        "ND",
+        "NORM"
+    ],
+    "InversionTime": 0.7,
+    "SeriesDescription": "T1map_MP2RAGE_Sag_AP_INV1",
+    "SeriesNumber": 27
+}

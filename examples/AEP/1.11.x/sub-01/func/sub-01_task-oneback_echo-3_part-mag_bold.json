@@ -1,0 +1,22 @@
+{
+    "AcquisitionTime": "14:11:12.617500",
+    "EchoNumber": 3,
+    "EchoTime": 0.05252,
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "M",
+        "MB",
+        "TE3",
+        "ND",
+        "NORM",
+        "MOSAIC"
+    ],
+    "ImagingFrequency": 123.230689,
+    "ProtocolName": "fMRI_AxObl_AP_OneBack-CMRR",
+    "SAR": 0.0241898,
+    "SeriesDescription": "fMRI_AxObl_AP_OneBack-CMRR",
+    "SeriesNumber": 45,
+    "TaskName": "oneback",
+    "WipMemBlock": "99b581d1-1541-4d06-afcd-0fbd25bc03a7||Sequence: R016 ve11e/master r/434b28f1; Aug  7 2019 18:53:46 by eja"
+}

@@ -1,0 +1,40 @@
+{
+    "AcquisitionMatrixPE": 256,
+    "AcquisitionTime": "13:24:25.560000",
+    "DwellTime": 8.9e-06,
+    "EchoTime": 0.00219,
+    "FlipAngle": 8,
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "M",
+        "ND"
+    ],
+    "ImagingFrequency": 123.230689,
+    "InversionTime": 1,
+    "MatrixCoilMode": "GRAPPA",
+    "ParallelReductionFactorInPlane": 2,
+    "PercentPhaseFOV": 100,
+    "PhaseEncodingSteps": 255,
+    "PixelBandwidth": 220,
+    "ProtocolName": "T1w_Sag_AP-",
+    "PulseSequenceDetails": "%SiemensSeq%\\tfl",
+    "ReconMatrixPE": 256,
+    "RepetitionTime": 1.9,
+    "SAR": 0.0473901,
+    "ScanOptions": "IR\\WE",
+    "SequenceName": "*tfl3d1_16ns",
+    "SeriesDescription": "T1w_Sag_AP-",
+    "SeriesNumber": 6,
+    "ShimSetting": [
+        2566,
+        -11311,
+        -11285,
+        205,
+        -16,
+        -322,
+        -24,
+        74
+    ],
+    "SliceThickness": 0.9
+}

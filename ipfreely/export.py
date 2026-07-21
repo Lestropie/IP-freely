@@ -36,7 +36,7 @@ COPY_UNMODIFIED = [
 ]
 
 
-CONVERSION_RULESETS = ["forbidden", "I1195", "1.1.x", "1.7.x", "1.11.x"]
+CONVERSION_RULESETS = ["forbidden", "I1195", "PR1003", "1.1.x", "1.7.x", "1.11.x"]
 
 
 def export_forbidden(
@@ -474,6 +474,216 @@ def _tier_metapaths(
     return tiers
 
 
+def _pr1003_candidates(
+    datapath: BIDSFilePath, extension: str
+) -> "list[tuple[BIDSFilePath, bool]]":
+    # PR1003 generalisation of _tier_metapaths. Under InheritanceWithinDir.ordered
+    #   a directory may host several co-applicable metadata files of one extension,
+    #   provided their entity counts differ (nearest-wins is then unambiguous). So at
+    #   every ancestor directory D on the path to the data file — from the dataset
+    #   root down to AND INCLUDING the data file's own (modality) directory — we offer
+    #   NOT the single _tier_metapaths pattern but the whole family
+    #     (D, dir-entities(D) ∪ S, suffix)   for every subset S of the data file's
+    #   *non-directory* entities (acq, task, run, echo, part, ...).
+    #
+    # - dir-entities(D) — the sub-/ses- entities materialised as directories on the
+    #   path to D — are ALWAYS included, exactly as in _tier_metapaths, keeping every
+    #   pattern ver170-valid (name-matching only data files within D's subtree).
+    # - S = ∅ recovers the single export_1x pattern at that tier; the modality
+    #   directory with S = all non-directory entities recovers the data file's sidecar.
+    # - Adding a non-directory entity strictly raises the pattern's entity count, so
+    #   two candidates in one directory that a common data file matches differ in
+    #   entity count iff |S| differs — the legality key under `ordered`.
+    #
+    # is_sidecar is True for exactly the (modality directory, full entity set) member.
+    directory_entities = {
+        f"{entity.key}-{entity.value}": entity
+        for entity in datapath.entities
+        if entity.key in ("sub", "ses")
+    }
+    nondir_entities = [
+        entity for entity in datapath.entities if entity.key not in ("sub", "ses")
+    ]
+    ancestors = list(datapath.relpath.parents)  # [modality_dir, ..., root]
+    sidecar_dir = ancestors[0]
+
+    def subsets(items):
+        return chain.from_iterable(
+            combinations(items, size) for size in range(len(items) + 1)
+        )
+
+    candidates: list[tuple[BIDSFilePath, bool]] = []
+    for ancestor in reversed(ancestors):  # root -> ... -> modality_dir
+        dir_entities = [
+            directory_entities[part]
+            for part in ancestor.parts
+            if part in directory_entities
+        ]
+        for subset in subsets(nondir_entities):
+            entities = dir_entities + list(subset)
+            is_sidecar = ancestor == sidecar_dir and len(subset) == len(nondir_entities)
+            candidates.append(
+                (
+                    BIDSFilePath(ancestor, entities, datapath.suffix, extension),
+                    is_sidecar,
+                )
+            )
+        if ancestor == sidecar_dir:
+            break
+    return candidates
+
+
+def export_PR1003(
+    bids_dir: pathlib.Path,
+    metadata: dict[BIDSFilePath, dict[str]],
+    out_dir: pathlib.Path,
+) -> None:
+    # Export a resolved dataset into a metadata layout valid — with zero warnings and
+    #   zero emitted overrides — under the PR1003 ruleset (InheritanceWithinDir.ordered
+    #   for JSON and non-JSON; keyvalue overrides permitted but deliberately unused).
+    #
+    # This reuses export_1x wholesale (copy pass, parent_sets, json_by_datafile,
+    #   applicable-datafiles cache, per-field height-first placement, no-leak
+    #   discipline, emit pass) and changes exactly two things:
+    #   (2) the candidate set per tier expands from one pattern to
+    #       _pr1003_candidates()'s power set over non-directory entities, and
+    #   (3) a new "ordered-invariant" eligibility clause forbids giving any data file
+    #       two applicable emitted files of EQUAL entity count within one directory.
+    #   The selection priority also promotes fewest-entities above file-fatness (the
+    #   entity count is now the legality key, not merely cosmetic).
+    # The no-leak / non-sidecar-coverage clauses are inherited verbatim, so — as in
+    #   export_1x — every key reaches each data file from exactly one applicable JSON
+    #   and no override is ever emitted.
+
+    for datapath in metadata:
+        parent = out_dir / datapath.relpath.parent
+        if not parent.exists():
+            parent.mkdir(parents=True)
+        shutil.copyfile(bids_dir / datapath.relpath, out_dir / datapath.relpath)
+
+    parent_sets: dict[BIDSFilePath, "frozenset[str]"] = {
+        datapath: frozenset(map(str, datapath.relpath.parents)) for datapath in metadata
+    }
+
+    json_by_datafile: dict[BIDSFilePath, dict] = {
+        datapath: by_extension.get(".json", {})
+        for datapath, by_extension in metadata.items()
+    }
+
+    applicable_cache: dict[BIDSFilePath, "list[BIDSFilePath]"] = {}
+
+    def applicable_datafiles(metapath: BIDSFilePath) -> "list[BIDSFilePath]":
+        cached = applicable_cache.get(metapath)
+        if cached is not None:
+            return cached
+        metapath_parent_str = str(metapath.relpath.parent)
+        result = [
+            datapath
+            for datapath in metadata
+            if is_applicable(
+                datapath, metapath, parent_sets[datapath], metapath_parent_str
+            )
+        ]
+        applicable_cache[metapath] = result
+        return result
+
+    candidate_cache: dict[tuple, "list[tuple[BIDSFilePath, bool]]"] = {}
+
+    def candidates(datapath: BIDSFilePath, extension: str):
+        key = (datapath, extension)
+        cached = candidate_cache.get(key)
+        if cached is None:
+            cached = candidate_cache[key] = _pr1003_candidates(datapath, extension)
+        return cached
+
+    new_json_data: dict[BIDSFilePath, dict] = {}
+    new_other_data: dict[BIDSFilePath, object] = {}
+
+    # Ordered-invariant occupancy: (directory, data file) -> {entity_count: metapath}.
+    #   Clause 3 rejects a candidate whose entity count is already occupied for a
+    #   covered data file by a DIFFERENT emitted pattern in the same directory;
+    #   re-selecting the same metapath (e.g. a second key onto one JSON) is fine.
+    used_patterns: dict[tuple, dict[int, BIDSFilePath]] = {}
+
+    def choose_slot(datapath: BIDSFilePath, extension: str, matches) -> BIDSFilePath:
+        def priority(item):
+            metapath, _is_sidecar = item
+            entries = (
+                len(new_json_data.get(metapath, ())) if extension == ".json" else 0
+            )
+            # height (fewest parents) -> fewest entities -> most entries -> __lt__
+            return (
+                len(metapath.relpath.parents),
+                len(metapath.entities),
+                -entries,
+                metapath,
+            )
+
+        for metapath, is_sidecar in sorted(
+            candidates(datapath, extension), key=priority
+        ):
+            applicable = applicable_datafiles(metapath)
+            if not all(matches(other) for other in applicable):
+                continue  # clause 1: no leak / no override
+            if not is_sidecar and len(applicable) < 2:
+                continue  # clause 2: non-sidecar coverage >= 2
+            count = len(metapath.entities)
+            directory = metapath.relpath.parent
+            if any(
+                used_patterns.get((directory, other), {}).get(count, metapath)
+                != metapath
+                for other in applicable
+            ):
+                continue  # clause 3: ordered-invariant (equal-count collision)
+            return metapath
+        assert False  # sidecar tier is always admissible
+
+    def record(metapath: BIDSFilePath) -> None:
+        count = len(metapath.entities)
+        directory = metapath.relpath.parent
+        for other in applicable_datafiles(metapath):
+            used_patterns.setdefault((directory, other), {})[count] = metapath
+
+    for datapath in sorted(metadata):
+        by_extension = metadata[datapath]
+        for extension, content in by_extension.items():
+            if extension == ".json":
+                for key in sorted(content):
+                    value = content[key]
+
+                    def matches(other, key=key, value=value):
+                        other_json = json_by_datafile[other]
+                        return key in other_json and other_json[key] == value
+
+                    metapath = choose_slot(datapath, ".json", matches)
+                    target = new_json_data.setdefault(metapath, {})
+                    assert target.get(key, value) == value
+                    target[key] = value
+                    record(metapath)
+            else:
+
+                def matches(other, extension=extension, value=content):
+                    return metadata[other].get(extension) == value
+
+                metapath = choose_slot(datapath, extension, matches)
+                assert new_other_data.get(metapath, content) == content
+                new_other_data[metapath] = content
+                record(metapath)
+
+    for new_json_filepath, keyvalues in new_json_data.items():
+        with open(out_dir / new_json_filepath.relpath, "w", encoding="utf-8") as f:
+            json.dump(keyvalues, f, indent=4, sort_keys=True)
+    for new_metapath, content in new_other_data.items():
+        with open(out_dir / new_metapath.relpath, "w", encoding="utf-8") as f:
+            if EXTENSIONS[new_metapath.extension].is_numerical_matrix:
+                numpy.savetxt(f, numpy.array(content))
+            elif new_metapath.extension == ".tsv":
+                for row in content:
+                    f.write("\t".join(row) + "\n")
+            else:
+                assert False
+
+
 def export_1x(
     bids_dir: pathlib.Path,
     metadata: dict[BIDSFilePath, dict[str]],
@@ -637,6 +847,8 @@ def export(
         export_forbidden(bids_dir, metadata, out_dir)
     elif ruleset.name == "I1195":
         export_I1195(bids_dir, metadata, out_dir)
+    elif ruleset.name == "PR1003":
+        export_PR1003(bids_dir, metadata, out_dir)
     elif ruleset.name in ("1.1.x", "1.7.x", "1.11.x"):
         export_1x(bids_dir, metadata, out_dir)
     else:

@@ -1,0 +1,13 @@
+{
+    "EchoTime1": 0.0134,
+    "EchoTime2": 0.03296,
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "P",
+        "TE3",
+        "ND",
+        "MOSAIC",
+        "PHASE"
+    ]
+}

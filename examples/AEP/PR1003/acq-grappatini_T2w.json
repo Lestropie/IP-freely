@@ -1,0 +1,22 @@
+{
+    "AcquisitionMatrixPE": 240,
+    "BaseResolution": 256,
+    "DwellTime": 8.9e-06,
+    "EchoTime": 0.083,
+    "EchoTrainLength": 16,
+    "FlipAngle": 180,
+    "ImageComments": "Simulated TSE Contrast",
+    "MRAcquisitionType": "2D",
+    "MatrixCoilMode": "GRAPPA",
+    "ParallelReductionFactorInPlane": 2,
+    "PercentPhaseFOV": 93.75,
+    "PhaseEncodingSteps": 240,
+    "PixelBandwidth": 220,
+    "ReceiveCoilActiveElements": "HC1-7;NC1",
+    "ReconMatrixPE": 480,
+    "RefLinesPE": 24,
+    "RepetitionTime": 3.91,
+    "SequenceVariant": "SP",
+    "SliceThickness": 3.6,
+    "SpacingBetweenSlices": 3.96
+}

@@ -1,0 +1,15 @@
+{
+    "MRAcquisitionType": "2D",
+    "EchoTime": 0.083,
+    "SeriesDescription": "T2w_CorOblHipp_RL-",
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "M",
+        "ND",
+        "NORM",
+        "FM",
+        "FIL"
+    ],
+    "SeriesNumber": 11
+}

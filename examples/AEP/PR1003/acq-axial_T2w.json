@@ -1,0 +1,33 @@
+{
+    "AcquisitionMatrixPE": 378,
+    "BaseResolution": 448,
+    "DwellTime": 6.2e-06,
+    "EchoTime": 0.083,
+    "EchoTrainLength": 18,
+    "FlipAngle": 120,
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "M",
+        "ND",
+        "NORM",
+        "FM",
+        "FIL"
+    ],
+    "Interpolation2D": 1,
+    "MRAcquisitionType": "2D",
+    "MatrixCoilMode": "SENSE",
+    "PercentPhaseFOV": 84.375,
+    "PhaseEncodingSteps": 414,
+    "PixelBandwidth": 180,
+    "ProtocolName": "T2w_TSE_Axial",
+    "PulseSequenceDetails": "%SiemensSeq%\\tse",
+    "ReconMatrixPE": 756,
+    "SequenceName": "*tse2d1rr18",
+    "SequenceVariant": "SK\\SP\\OSP",
+    "SeriesDescription": "T2w_TSE_Axial",
+    "SeriesNumber": 2,
+    "SliceThickness": 3,
+    "SpacingBetweenSlices": 3,
+    "SpoilingState": true
+}
