@@ -37,7 +37,15 @@ COPY_UNMODIFIED = [
 ]
 
 
-CONVERSION_RULESETS = ["forbidden", "I1195", "PR1003", "1.1.x", "1.7.x", "1.11.x"]
+CONVERSION_RULESETS = [
+    "forbidden",
+    "I1195",
+    "PR1003",
+    "1.1.x",
+    "1.7.x",
+    "1.11.x",
+    "BIDS2I75",
+]
 
 
 def export_forbidden(
@@ -66,11 +74,19 @@ def export_forbidden(
                         assert False
 
 
-def export_I1195(
+def _export_greedy_merge(
     bids_dir: pathlib.Path,
     metadata: dict[BIDSFilePath, dict[str]],
     out_dir: pathlib.Path,
+    *,
+    allow_suffixless: bool,
 ) -> None:
+    # Shared greedy set-cover exporter for the "merge"-JSON rulesets.
+    # `allow_suffixless` is set only by BIDS2I75 (compulsory_suffix == False): it
+    #   permits candidate JSON metadata paths whose stem is entirely entities with
+    #   no trailing suffix, which are applicable to data files of ANY suffix and so
+    #   let a single file carry fields shared across suffixes. I1195 calls with it
+    #   False, reproducing the previous behaviour exactly.
 
     if True:  # profiling disabled: with Profile() as profile:
 
@@ -105,8 +121,10 @@ def export_I1195(
         #   EXACTLY the name-applicable set: any data file omitted from a candidate's
         #   bucket differs in suffix or is missing one of the candidate's entities, so
         #   is_applicable() would return False for it regardless of location — dropping
-        #   it changes nothing. Candidates with a None suffix (would match any data
-        #   file's suffix) fall back to the full scan rather than risk a miss.
+        #   it changes nothing. When `allow_suffixless`, a parallel family of
+        #   suffix-agnostic buckets keyed (None, subset) is also built so a
+        #   suffixless candidate (which matches ANY data suffix) retrieves its
+        #   exact name-applicable set from the index too, instead of a full scan.
         datafile_index: dict[tuple, list[BIDSFilePath]] = {}
         for datapath in metadata:
             entity_kvs = [(entity.key, entity.value) for entity in datapath.entities]
@@ -115,6 +133,10 @@ def export_I1195(
                     datafile_index.setdefault(
                         (datapath.suffix, frozenset(subset)), []
                     ).append(datapath)
+                    if allow_suffixless:
+                        datafile_index.setdefault((None, frozenset(subset)), []).append(
+                            datapath
+                        )
 
         # First step: For every unique key-value pair, generate a list of BIDSFilePaths to which it applies
         # Note: This applies exclusively to JSON; will need to do separate for non-JSON
@@ -204,6 +226,12 @@ def export_I1195(
             #   own generating data file — the "applicable by name but inapplicable by
             #   location" rule is not newly violated relative to the original.
             candidates: set[BIDSFilePath] = set()
+            # BIDS2I75 only: also propose a suffixless variant of each JSON
+            #   candidate, applicable to data of any suffix. The empty-stem case
+            #   (no entities AND no suffix -> a bare ".json") is excluded, so a
+            #   suffixless candidate is emitted only when it carries >=1 entity.
+            #   Restricted to ".json"; .bval/.bvec/.tsv stay suffix-specific.
+            emit_suffixless = allow_suffixless and extension == ".json"
             for datapath in datapaths:
                 for parent in datapath.relpath.parents:
                     for entities in all_subsets(datapath.entities):
@@ -212,6 +240,10 @@ def export_I1195(
                                 parent, list(entities), datapath.suffix, extension
                             )
                         )
+                        if emit_suffixless and entities:
+                            candidates.add(
+                                BIDSFilePath(parent, list(entities), None, extension)
+                            )
             return candidates
 
         def best_metadata_path(
@@ -245,24 +277,20 @@ def export_I1195(
                 candidate_eligible: bool = True
                 datafile_matches: int = 0
                 # Consult only the data files this candidate could be name-applicable
-                #   to (optimisation (c)) instead of scanning all of `metadata`. For a
-                #   suffix-bearing candidate that is the exact index bucket; a
-                #   suffix-less candidate could match any suffix, so fall back to the
-                #   full set to stay conservative. Location is still filtered by
-                #   is_applicable() below, so the truth value is unchanged.
-                if candidate.suffix is not None:
-                    relevant_datapaths = datafile_index.get(
-                        (
-                            candidate.suffix,
-                            frozenset(
-                                (entity.key, entity.value)
-                                for entity in candidate.entities
-                            ),
+                #   to (optimisation (c)) instead of scanning all of `metadata`. The
+                #   index bucket keyed on the candidate's own suffix (possibly None,
+                #   for a suffixless BIDS2I75 candidate, whose (None, subset) buckets
+                #   are populated above) is EXACTLY that name-applicable set.
+                #   Location is still filtered by is_applicable() below.
+                relevant_datapaths = datafile_index.get(
+                    (
+                        candidate.suffix,
+                        frozenset(
+                            (entity.key, entity.value) for entity in candidate.entities
                         ),
-                        (),
-                    )
-                else:
-                    relevant_datapaths = metadata
+                    ),
+                    (),
+                )
                 for datapath in relevant_datapaths:
                     if datapath in remaining_set:
                         if is_applicable(
@@ -298,14 +326,19 @@ def export_I1195(
             assert refined_candidates
 
             # Now we need to choose one of the candidates from this list
-            # What should our order of selection be?
-            # For now, going to go with:
-            #   - Lowest in the filesystem hierarchy (ie. modality directory)
-            #   - But shortest file name
-            # TODO If generating a proposal ruleset where suffixes are optional,
-            #   may need to refine this accordingly
-            def priority(item: BIDSFilePath) -> int:
-                return len(item.entities) - 1024 * len(item.relpath.parents)
+            # Order of selection (among candidates of equal coverage):
+            #   - A suffixless candidate ahead of a suffixed one (BIDS2I75 maximal
+            #     exploitation; also makes the choice deterministic where set
+            #     iteration order previously did not)
+            #   - Then lowest in the filesystem hierarchy (ie. modality directory)
+            #   - Then shortest file name (fewest entities)
+            # For I1195 (allow_suffixless False) no suffixless candidate exists, so
+            #   the leading key is constant and the ordering is unchanged.
+            def priority(item: BIDSFilePath) -> tuple:
+                return (
+                    0 if item.suffix is None else 1,
+                    len(item.entities) - 1024 * len(item.relpath.parents),
+                )
 
             candidate = sorted(refined_candidates, key=priority)[0]
             # TODO If the nominated path is higher in the filesystem hierarchy
@@ -415,6 +448,25 @@ def export_I1195(
                         f.write("\t".join(row) + "\n")
                 else:
                     assert False
+
+
+def export_I1195(
+    bids_dir: pathlib.Path,
+    metadata: dict[BIDSFilePath, dict[str]],
+    out_dir: pathlib.Path,
+) -> None:
+    _export_greedy_merge(bids_dir, metadata, out_dir, allow_suffixless=False)
+
+
+def export_BIDS2I75(
+    bids_dir: pathlib.Path,
+    metadata: dict[BIDSFilePath, dict[str]],
+    out_dir: pathlib.Path,
+) -> None:
+    # BIDS2I75 == I1195 inheritance rules but metadata files need not carry a
+    #   suffix; a suffixless JSON file applies to data of any suffix, so common
+    #   fields can be consolidated across suffixes. See _export_greedy_merge.
+    _export_greedy_merge(bids_dir, metadata, out_dir, allow_suffixless=True)
 
 
 def _tier_metapaths(
@@ -869,6 +921,11 @@ def export(
         dataset_description_data["SourceDatasets"].append(str(bids_dir))
     else:
         dataset_description_data["SourceDatasets"] = [str(bids_dir)]
+    # For BIDS2I75 the output declares the corresponding BIDSVersion so that the
+    #   converted dataset auto-selects the BIDS2I75 ruleset on re-evaluation
+    #   (inverse of the run.py BIDSVersion -> ruleset mapping).
+    if ruleset.name == "BIDS2I75":
+        dataset_description_data["BIDSVersion"] = "BIDS 2.0 Issue 75"
     with open(out_dir / "dataset_description.json", "w", encoding="utf-8") as f:
         json.dump(dataset_description_data, f)
 
@@ -876,6 +933,8 @@ def export(
         export_forbidden(bids_dir, metadata, out_dir)
     elif ruleset.name == "I1195":
         export_I1195(bids_dir, metadata, out_dir)
+    elif ruleset.name == "BIDS2I75":
+        export_BIDS2I75(bids_dir, metadata, out_dir)
     elif ruleset.name == "PR1003":
         export_PR1003(bids_dir, metadata, out_dir)
     elif ruleset.name in ("1.1.x", "1.7.x", "1.11.x"):
