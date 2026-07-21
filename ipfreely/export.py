@@ -36,7 +36,7 @@ COPY_UNMODIFIED = [
 ]
 
 
-CONVERSION_RULESETS = ["forbidden", "I1195"]
+CONVERSION_RULESETS = ["forbidden", "I1195", "1.1.x", "1.7.x", "1.11.x"]
 
 
 def export_forbidden(
@@ -416,6 +416,185 @@ def export_I1195(
                     assert False
 
 
+def _tier_metapaths(
+    datapath: BIDSFilePath, extension: str
+) -> "list[tuple[BIDSFilePath, bool]]":
+    # Enumerate the candidate placement "tiers" for one data file, ordered from
+    #   highest in the filesystem hierarchy (dataset root) to lowest (the data
+    #   file's own sidecar). Each returned tuple is (metapath, is_sidecar).
+    #
+    # The tiers are the *entity directories* on the path to the data file — the
+    #   dataset root and every ancestor directory introduced by a sub-/ses-
+    #   entity — plus the data file's own directory (the sidecar).
+    #
+    # Two properties make placement into these tiers valid under the 1.x family
+    #   (unique-within-dir + no-override + ver170 + compulsory-suffix) BY
+    #   CONSTRUCTION, independent of which fields land where:
+    # - Every entity-directory tier carries a *single* pattern per suffix: the
+    #   accumulated sub-/ses- entities of that directory plus the suffix (e.g.
+    #   `T2w` at root, `sub-01_T2w` under sub-01/). So within any one directory
+    #   the emitted metadata files of a given extension are pairwise non-nested
+    #   (one pattern per suffix) — the within-directory antichain invariant holds
+    #   trivially, and no keyvalue override can arise between two files at one
+    #   level.
+    # - Entity directories sit STRICTLY above the data-file (modality) directory,
+    #   so a hoisted file never shares a directory with a sidecar; the level gap
+    #   turns co-application into inheritance-merge, never a same-level collision.
+    # - Including exactly the sub-/ses- entities of each tier keeps the pattern
+    #   ver170-valid: it name-matches only data files inside that directory's
+    #   subtree (non-directory entities such as acq-/task-/echo- are omitted, so
+    #   fields common across them still hoist).
+    tiers: list[tuple[BIDSFilePath, bool]] = []
+    directory_entities = {
+        f"{entity.key}-{entity.value}": entity
+        for entity in datapath.entities
+        if entity.key in ("sub", "ses")
+    }
+    ancestors = list(datapath.relpath.parents)  # [modality_dir, ..., root]
+    sidecar_dir = ancestors[0]
+    for ancestor in reversed(ancestors):  # root -> ... -> modality_dir
+        if ancestor == sidecar_dir:
+            break
+        entities = [
+            directory_entities[part]
+            for part in ancestor.parts
+            if part in directory_entities
+        ]
+        tiers.append(
+            (BIDSFilePath(ancestor, entities, datapath.suffix, extension), False)
+        )
+    tiers.append(
+        (
+            BIDSFilePath(
+                sidecar_dir, list(datapath.entities), datapath.suffix, extension
+            ),
+            True,
+        )
+    )
+    return tiers
+
+
+def export_1x(
+    bids_dir: pathlib.Path,
+    metadata: dict[BIDSFilePath, dict[str]],
+    out_dir: pathlib.Path,
+) -> None:
+    # Export a resolved dataset into a metadata layout valid — with zero warnings
+    #   — under the 1.1.x / 1.7.x / 1.11.x rulesets (1.11.x being the strictest,
+    #   so a warning-free 1.11.x result is clean under all three).
+    #
+    # Strategy: for every (data file, JSON key) — and every atomic non-JSON
+    #   content — hoist the field to the HIGHEST entity-directory tier
+    #   (see _tier_metapaths) at which doing so introduces neither a spurious
+    #   nor an overriding value, falling back to the data file's own sidecar.
+    #   Tier placement guarantees the structural 1.x invariants by construction
+    #   (see _tier_metapaths); this function only has to enforce, per field, that
+    #   a hoisted metadata file "leaks" onto no data file whose resolved value
+    #   differs (or which lacks the field entirely).
+    #
+    # This is the height-first objective of the plan realised without an explicit
+    #   antichain-repair phase: the tier lattice is an antichain per directory a
+    #   priori, so the only decision left is how high each field may rise.
+
+    for datapath in metadata:
+        parent = out_dir / datapath.relpath.parent
+        if not parent.exists():
+            parent.mkdir(parents=True)
+        shutil.copyfile(bids_dir / datapath.relpath, out_dir / datapath.relpath)
+
+    parent_sets: dict[BIDSFilePath, "frozenset[str]"] = {
+        datapath: frozenset(map(str, datapath.relpath.parents)) for datapath in metadata
+    }
+
+    # Precompute each data file's JSON key-values for O(1) leak checks below.
+    json_by_datafile: dict[BIDSFilePath, dict] = {
+        datapath: by_extension.get(".json", {})
+        for datapath, by_extension in metadata.items()
+    }
+
+    # Cache, per candidate metapath, the set of data files it is applicable to
+    #   (by name AND filesystem location). The applicable set depends only on the
+    #   metapath, so it is shared across every field that probes the same tier.
+    applicable_cache: dict[BIDSFilePath, "list[BIDSFilePath]"] = {}
+
+    def applicable_datafiles(metapath: BIDSFilePath) -> "list[BIDSFilePath]":
+        cached = applicable_cache.get(metapath)
+        if cached is not None:
+            return cached
+        metapath_parent_str = str(metapath.relpath.parent)
+        result = [
+            datapath
+            for datapath in metadata
+            if is_applicable(
+                datapath, metapath, parent_sets[datapath], metapath_parent_str
+            )
+        ]
+        applicable_cache[metapath] = result
+        return result
+
+    def choose_slot(datapath: BIDSFilePath, extension: str, matches) -> BIDSFilePath:
+        # Return the highest-tier metapath at which `datapath`'s field for this
+        #   extension may be placed. `matches(other_datafile) -> bool` reports
+        #   whether another data file carries an identical value for the field;
+        #   a tier is admissible only if EVERY data file it is applicable to
+        #   matches (no leak, no override), and — to avoid a non-sidecar warning
+        #   for a metadata file exclusive to a single data file — a non-sidecar
+        #   tier must cover at least two data files. The sidecar tier always
+        #   qualifies (it is applicable to exactly `datapath`, which matches
+        #   itself), so a slot is always found.
+        for metapath, is_sidecar in _tier_metapaths(datapath, extension):
+            applicable = applicable_datafiles(metapath)
+            if not all(matches(other) for other in applicable):
+                continue
+            if is_sidecar or len(applicable) >= 2:
+                return metapath
+        assert False  # sidecar tier is always admissible
+
+    new_json_data: dict[BIDSFilePath, dict] = {}
+    new_other_data: dict[BIDSFilePath, object] = {}
+
+    for datapath, by_extension in metadata.items():
+        for extension, content in by_extension.items():
+            if extension == ".json":
+                for key, value in content.items():
+
+                    def matches(other, key=key, value=value):
+                        other_json = json_by_datafile[other]
+                        return key in other_json and other_json[key] == value
+
+                    metapath = choose_slot(datapath, ".json", matches)
+                    target = new_json_data.setdefault(metapath, {})
+                    # A key can reach one metapath from two data files only if
+                    #   both resolve the same value (guaranteed by the leak
+                    #   check), so an existing entry must be identical.
+                    assert target.get(key, value) == value
+                    target[key] = value
+            else:
+
+                # A non-JSON metadata file is atomic content; another data file
+                #   "matches" only if its resolved content for this extension is
+                #   identical.
+                def matches(other, extension=extension, value=content):
+                    return metadata[other].get(extension) == value
+
+                metapath = choose_slot(datapath, extension, matches)
+                assert new_other_data.get(metapath, content) == content
+                new_other_data[metapath] = content
+
+    for new_json_filepath, keyvalues in new_json_data.items():
+        with open(out_dir / new_json_filepath.relpath, "w", encoding="utf-8") as f:
+            json.dump(keyvalues, f, indent=4, sort_keys=True)
+    for new_metapath, content in new_other_data.items():
+        with open(out_dir / new_metapath.relpath, "w", encoding="utf-8") as f:
+            if EXTENSIONS[new_metapath.extension].is_numerical_matrix:
+                numpy.savetxt(f, numpy.array(content))
+            elif new_metapath.extension == ".tsv":
+                for row in content:
+                    f.write("\t".join(row) + "\n")
+            else:
+                assert False
+
+
 def export(
     bids_dir: pathlib.Path,
     metadata: dict[BIDSFilePath, dict[str]],
@@ -458,5 +637,7 @@ def export(
         export_forbidden(bids_dir, metadata, out_dir)
     elif ruleset.name == "I1195":
         export_I1195(bids_dir, metadata, out_dir)
+    elif ruleset.name in ("1.1.x", "1.7.x", "1.11.x"):
+        export_1x(bids_dir, metadata, out_dir)
     else:
         assert False
