@@ -599,10 +599,17 @@ def export_PR1003(
     new_json_data: dict[BIDSFilePath, dict] = {}
     new_other_data: dict[BIDSFilePath, object] = {}
 
-    # Ordered-invariant occupancy: (directory, data file) -> {entity_count: metapath}.
-    #   Clause 3 rejects a candidate whose entity count is already occupied for a
-    #   covered data file by a DIFFERENT emitted pattern in the same directory;
-    #   re-selecting the same metapath (e.g. a second key onto one JSON) is fine.
+    # Ordered-invariant occupancy: (directory, extension, data file) ->
+    #   {entity_count: metapath}. Clause 3 rejects a candidate whose entity count is
+    #   already occupied for a covered data file by a DIFFERENT emitted pattern in the
+    #   same directory; re-selecting the same metapath (e.g. a second key onto one
+    #   JSON) is fine.
+    # The extension is part of the key because the within-directory ordering rule is
+    #   enforced PER EXTENSION (evaluate.py iterates has_order_ambiguity over each
+    #   per-(data file, extension) BIDSFilePathList separately). A .bval and a .bvec
+    #   — or a .json — at one directory level with equal entity counts never share an
+    #   inheritance list and so never conflict; omitting the extension here would make
+    #   a .bval placement spuriously block a .bvec (and vice versa) at the same count.
     used_patterns: dict[tuple, dict[int, BIDSFilePath]] = {}
 
     def choose_slot(datapath: BIDSFilePath, extension: str, matches) -> BIDSFilePath:
@@ -630,7 +637,9 @@ def export_PR1003(
             count = len(metapath.entities)
             directory = metapath.relpath.parent
             if any(
-                used_patterns.get((directory, other), {}).get(count, metapath)
+                used_patterns.get((directory, metapath.extension, other), {}).get(
+                    count, metapath
+                )
                 != metapath
                 for other in applicable
             ):
@@ -642,7 +651,9 @@ def export_PR1003(
         count = len(metapath.entities)
         directory = metapath.relpath.parent
         for other in applicable_datafiles(metapath):
-            used_patterns.setdefault((directory, other), {})[count] = metapath
+            used_patterns.setdefault((directory, metapath.extension, other), {})[
+                count
+            ] = metapath
 
     for datapath in sorted(metadata):
         by_extension = metadata[datapath]
