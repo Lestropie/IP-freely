@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import os
 import pathlib
 
 # import sys
@@ -47,10 +48,39 @@ class BIDSEntity:
 
 class BIDSFilePath:
 
+    # Public attributes:
+    # - relpath:   pathlib.Path, relative to the dataset root.
+    # - pathstr:   str(relpath), cached at construction. This is the *identity key*
+    #              of the class: __eq__, __hash__ and __str__ are all defined
+    #              against it rather than against relpath.
+    #
+    # Why cache it: instances are dict keys and set members throughout the export
+    #   pipeline (Graph.m4d / Graph.d4m, ExportContext._applicable_cache, and the
+    #   greedy candidates / rejected / remaining_set sets), so __hash__ and __eq__
+    #   are the most frequently executed code in the tool -- over a million calls
+    #   apiece for the greedy strategies. Delegating them to pathlib.PurePath costs
+    #   a Python-level call into pathlib plus, for __eq__, an element-wise
+    #   comparison of the cached _cparts tuples. Comparing one cached string
+    #   instead is a single interpreter-level operation.
+    #
+    # Why this preserves the equivalence relation exactly: PurePath equality is
+    #   equality of casefolded parts under an identical flavour. All instances here
+    #   share the running platform's flavour, and on POSIX casefolding is the
+    #   identity, so two relpaths are equal iff their parts are equal iff their
+    #   string forms are equal -- str() being an unambiguous rendering of the parts
+    #   for a fixed flavour. The two constructors below are obliged to agree on
+    #   pathstr exactly, so that a parsed real file and a synthesised candidate
+    #   denoting the same file remain equal and hash alike -- which the greedy
+    #   exporter relies on when it matches candidates against data files. The
+    #   parse-a-real-file form takes str(relpath) directly; the synthesise-a-
+    #   candidate form reconstructs the same string without calling it (see the
+    #   note there for why that is safe).
+    #
     # def __init__(self, root_dir: pathlib.Path, abspath: pathlib.Path):
     def __init__(self, *args):
         if len(args) == 2 and all(isinstance(item, pathlib.Path) for item in args):
             self.relpath = args[1].relative_to(args[0])
+            self.pathstr = str(self.relpath)
             self.stem = self.relpath.stem
             # For some reason, pathlib.PurePath.stem yields the file name
             #   excluding only the final suffix, not all of them;
@@ -103,7 +133,28 @@ class BIDSFilePath:
                 + ("_" if self.entities and self.suffix else "")
                 + ("" if self.suffix is None else f"{self.suffix}")
             )
-            self.relpath = args[0] / f"{self.stem}{self.extension}"
+            name = f"{self.stem}{self.extension}"
+            self.relpath = args[0] / name
+            # Assemble the key by string concatenation rather than via
+            #   str(self.relpath). This constructor is the hot one -- the greedy
+            #   exporter runs it hundreds of thousands of times -- and
+            #   PurePath.__str__ has to re-join the parsed parts on first access.
+            #   str(args[0]) is memoised on the parent Path, and the same parent
+            #   object is reused across every candidate synthesised for it, so
+            #   this reduces to two string concatenations per candidate.
+            # The result is identical to str(args[0] / name) for any relative
+            #   parent: pathlib renders a parent of "." as no leading component
+            #   at all, and otherwise joins with the flavour separator, which for
+            #   the native pathlib.Path required here is os.sep. The endswith
+            #   branch covers a root parent, whose rendering already ends in the
+            #   separator.
+            parent_str = str(args[0])
+            if parent_str == ".":
+                self.pathstr = name
+            elif parent_str.endswith(os.sep):
+                self.pathstr = parent_str + name
+            else:
+                self.pathstr = parent_str + os.sep + name
             return
         raise TypeError(f"Unrecognised initialisation of filepath.BIDSFilePath: {args}")
 
@@ -132,10 +183,16 @@ class BIDSFilePath:
     #   Eg. Generating candidate paths for maximal exploitation of inheritance
 
     def __eq__(self, other: "BIDSFilePath") -> bool:
-        return self.relpath == other.relpath
+        # Compares the cached path key rather than relpath; see the class-level
+        #   note above for why the two relations are identical. As before, this
+        #   is duck-typed: comparison against a non-BIDSFilePath raises
+        #   AttributeError rather than returning False or NotImplemented.
+        return self.pathstr == other.pathstr
 
     def __hash__(self):
-        return self.relpath.__hash__()
+        # str hashes are memoised by CPython, so this is one cached lookup;
+        #   it also avoids the Python-level call into pathlib.PurePath.__hash__.
+        return hash(self.pathstr)
 
     def __lt__(self, other) -> bool:  # pylint: disable=too-many-return-statements
         # Define sorting function for parsed BIDS filesystem paths
@@ -169,7 +226,7 @@ class BIDSFilePath:
         return str(self) < str(other)
 
     def __str__(self) -> str:
-        return str(self.relpath)
+        return self.pathstr
 
     def __format__(self, format_spec) -> str:
         return self.relpath.__format__(format_spec)
