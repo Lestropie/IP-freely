@@ -9,18 +9,21 @@ cover all seven supported rulesets:
 - ``_greedy``  — set cover over applicability sets (`I1195`, `BIDS2I75`).
 
 `EXPORTERS` names the strategy and its behaviour modifiers for each ruleset.
+`_profile` provides the opt-in cProfile instrumentation of the strategy call.
 """
 
 from functools import partial
 import json
 import pathlib
 import shutil
+from typing import Optional
 
 from .. import BIDSError
 from ..filepath import BIDSFilePath
 from ..ruleset import Ruleset
 from ._common import ExportContext
 from ._greedy import export_greedy
+from ._profile import profiled
 from ._sidecar import export_sidecar
 from ._tiered import export_tiered
 
@@ -81,6 +84,7 @@ def export(
     metadata: dict[BIDSFilePath, dict[str]],
     ruleset: Ruleset,
     out_dir: pathlib.Path,
+    profile: Optional[pathlib.Path] = None,
 ) -> None:
 
     if ruleset.name not in EXPORTERS:
@@ -127,4 +131,7 @@ def export(
     with open(out_dir / "dataset_description.json", "w", encoding="utf-8") as f:
         json.dump(dataset_description_data, f)
 
-    EXPORTERS[ruleset.name](ExportContext(bids_dir, metadata, out_dir))
+    # Only the exporter itself is profiled: the preamble above is a fixed handful of
+    #   file copies, whereas the four-phase pipeline is where all scaling behaviour is.
+    with profiled(profile):
+        EXPORTERS[ruleset.name](ExportContext(bids_dir, metadata, out_dir))

@@ -113,6 +113,13 @@ def main():
         " to a JSON file.",
     )
     parser.add_argument(
+        "-p",
+        "--profile",
+        help="Profile the dataset conversion performed by -c / --convert,"
+        " writing raw pstats to the nominated file"
+        " and a summary of the most expensive functions to stderr.",
+    )
+    parser.add_argument(
         "-r",
         "--ruleset",
         help="Analyse the dataset under a specific IP ruleset.",
@@ -136,6 +143,13 @@ def main():
     except argparse.ArgumentError as e:
         sys.stderr.write(f"Error parsing command-line: {e}\n")
         sys.exit()
+
+    if args.profile is not None and args.convert is None:
+        sys.stderr.write(
+            "Option -p / --profile only has an effect in combination with"
+            " -c / --convert\n"
+        )
+        sys.exit(1)
 
     bids_dir = pathlib.Path(args.bids_dir)
     if not bids_dir.is_dir():
@@ -239,7 +253,13 @@ def main():
 
     if args.convert is not None:
         try:
-            export(bids_dir, metadata, RULESETS[args.convert[0]], args.convert[1])
+            export(
+                bids_dir,
+                metadata,
+                RULESETS[args.convert[0]],
+                args.convert[1],
+                profile=pathlib.Path(args.profile) if args.profile else None,
+            )
         except BIDSError as e:
             logger.critical(f"Error during dataset conversion: {e}\n")
             sys.exit(ReturnCodes.MALFORMED_DATASET)
