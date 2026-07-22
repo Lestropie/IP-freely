@@ -1,5 +1,4 @@
 {
-    "EchoTime": 0.083,
     "ImageType": [
         "ORIGINAL",
         "PRIMARY",
@@ -11,6 +10,5 @@
         "2",
         "FIL"
     ],
-    "MRAcquisitionType": "2D",
     "SeriesNumber": 14
 }

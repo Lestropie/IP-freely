@@ -1,5 +1,14 @@
 {
     "AcquisitionTime": "13:42:42.435000",
+    "ImageOrientationPatientDICOM": [
+        0.999942,
+        0.0107392,
+        3.66753e-10,
+        -0.00484568,
+        0.451189,
+        -0.892415
+    ],
+    "ImageOrientationText": "Cor>Tra(-26.8)>Sag(0.5)",
     "ImagingFrequency": 123.230691,
     "ProtocolName": "T2Map_CorOblHipp_RL",
     "PulseSequenceDetails": "%CustomerSeq%\\accT2map_wip899c_ve11e",

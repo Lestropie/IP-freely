@@ -8,6 +8,12 @@ repos:
   hooks:
   - id: trailing-whitespace
   - id: end-of-file-fixer
+    # The example datasets are written byte-for-byte by ipfreely/export, which
+    #   emits no trailing newline. Appending one here would make the committed
+    #   fixtures differ from a fresh `run.py -c` conversion of the same source,
+    #   defeating the reproducibility check they exist to support -- and would
+    #   do so only for whichever files a given commit happened to touch.
+    exclude: ^examples/
   - id: check-yaml
   - id: check-json
   - id: check-added-large-files
@@ -33,16 +39,20 @@ repos:
 - repo: https://github.com/psf/black
   rev: 25.1.0
   hooks:
-    - id: black
-      args: [--line-length=88]
-      language_version: python3.11
+  - id: black
+    args: [--line-length=88]
+    language_version: python3.11
 
 - repo: https://github.com/codespell-project/codespell
   # Configuration for codespell is in .pre-commit-config.yaml
   rev: v2.4.1
   hooks:
   - id: codespell
+    # Likewise generated: the example datasets carry DICOM-derived scanner
+    #   metadata whose short ImageType acronyms trip the dictionary (the code
+    #   for "no distortion correction" is read as a misspelling of "and").
+    #   These are values recorded off a scanner, not prose.
+    exclude: ^examples/
 
 ci:
   skip: [hadolint-docker]
-
