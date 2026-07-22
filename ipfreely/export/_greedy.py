@@ -53,9 +53,13 @@ def export_greedy(context: ExportContext, *, allow_suffixless: bool) -> None:
     #   (None, subset) is also built so a suffixless candidate (which matches ANY data
     #   suffix) retrieves its exact name-applicable set from the index too, instead of
     #   a full scan.
+    # The (key, value) pairs come from the BIDSFilePath's cached `entityset` rather than
+    #   being rebuilt here; `combinations` accepts any iterable, and since each
+    #   `subset` is re-frozen into a frozenset the iteration order of the source set is
+    #   immaterial to the keys produced.
     datafile_index: dict[tuple, list[BIDSFilePath]] = {}
     for datapath in metadata:
-        entity_kvs = [(entity.key, entity.value) for entity in datapath.entities]
+        entity_kvs = datapath.entityset
         for size in range(len(entity_kvs) + 1):
             for subset in combinations(entity_kvs, size):
                 datafile_index.setdefault(
@@ -177,13 +181,12 @@ def export_greedy(context: ExportContext, *, allow_suffixless: bool) -> None:
             #   candidate, whose (None, subset) buckets are populated above) is EXACTLY
             #   that name-applicable set. Location is still filtered by is_applicable()
             #   below.
+            #   The candidate's (key, value) frozenset is cached on the BIDSFilePath at
+            #   construction, so the index key is now two attribute reads and a tuple
+            #   build; previously the frozenset was rebuilt for every candidate on
+            #   every greedy iteration.
             relevant_datapaths = datafile_index.get(
-                (
-                    candidate.suffix,
-                    frozenset(
-                        (entity.key, entity.value) for entity in candidate.entities
-                    ),
-                ),
+                (candidate.suffix, candidate.entityset),
                 (),
             )
             for datapath in relevant_datapaths:

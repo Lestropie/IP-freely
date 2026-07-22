@@ -64,6 +64,16 @@ class BIDSFilePath:
     #              iff that holds and the two differ. The trailing separator is
     #              what makes the prefix test exact -- without it "sub-1" would
     #              spuriously prefix "sub-10". See __lt__.
+    # - entitymap: {entity.key: entity.value}, cached at construction. Lossless
+    #              because BOTH constructors reject duplicate entity keys, so the
+    #              mapping has exactly one entry per element of `entities`.
+    # - entityset: frozenset of the (key, value) pairs, cached at construction.
+    #              Plain (str, str) tuples, NOT BIDSEntity objects -- BIDSEntity
+    #              defines neither __eq__ nor __hash__, so a set of them would
+    #              compare by identity and silently fail to deduplicate or match.
+    #              This is the name-applicability key: metadata file M is
+    #              name-applicable to data file D iff M.entityset <= D.entityset
+    #              (plus the suffix rule); see utils.applicability.
     # - depth:     len(relpath.parents), i.e. the number of components of relpath.
     #              Equal to dirprefix.count(os.sep) + 1 because relpath is always
     #              relative (both constructors guarantee it) and pathlib-normalised
@@ -139,8 +149,16 @@ class BIDSFilePath:
                 raise BIDSError(
                     f"Malformed entity structure in BIDS file {self.relpath}"
                 ) from e
-            if len(set(entity.key for entity in self.entities)) != len(self.entities):
+            # The key->value mapping doubles as the duplicate-key check: a dict
+            #   comprehension keyed on entity.key collapses a repeated key, so a
+            #   short mapping is exactly the "duplicate entities" condition that
+            #   was previously tested with a separate set() of the keys. Building
+            #   it here rather than testing and discarding it is what makes the
+            #   mapping free.
+            self.entitymap = {entity.key: entity.value for entity in self.entities}
+            if len(self.entitymap) != len(self.entities):
                 raise BIDSError(f"Duplicate entities in BIDS file {self.relpath}")
+            self.entityset = frozenset(self.entitymap.items())
             return
         if (
             len(args) == 4
@@ -152,6 +170,19 @@ class BIDSFilePath:
             and args[3].startswith(".")
         ):
             self.entities = args[1]
+            # Same mapping, same duplicate-key rejection, as the parse-a-real-file
+            #   branch above. Synthesising this branch's entity lists from the
+            #   entities of an already-parsed data file (a powerset subset in
+            #   _greedy.build_candidates, disjoint directory / non-directory
+            #   groups in _tiered._candidate_metapaths) means a repeated key is
+            #   unreachable in practice; the check is kept anyway so that
+            #   `entitymap` and `entityset` are lossless renderings of `entities`
+            #   for EVERY instance rather than only for parsed ones, which is the
+            #   invariant utils.applicability relies on.
+            self.entitymap = {entity.key: entity.value for entity in args[1]}
+            if len(self.entitymap) != len(args[1]):
+                raise BIDSError(f"Duplicate entities in BIDS file {args[1]}")
+            self.entityset = frozenset(self.entitymap.items())
             self.suffix = args[2]
             self.extension = args[3]
             self.stem = (
@@ -204,7 +235,10 @@ class BIDSFilePath:
             )
 
     def has_entity(self, key: str) -> bool:
-        return any(entity[0] == key for entity in self.entities)
+        # Equivalent to the previous any(entity[0] == key for entity in
+        #   self.entities): entitymap has one entry per entity, keyed by
+        #   entity.key, which is what BIDSEntity.__getitem__(0) returns.
+        return key in self.entitymap
 
     def is_metadata(self) -> bool:
         return self.extension in EXTENSIONS_STR

@@ -23,17 +23,29 @@ def is_applicable_nameonly(datafile: BIDSFilePath, metafile: BIDSFilePath) -> bo
     #   or that have a different value for that entity than the data file,
     #   then the metadata file is not applicable
     # The data file can however have entities that aren't present in the metadata file
-    for entity in metafile.entities:
-        try:
-            if (
-                next(item for item in datafile.entities if item.key == entity.key).value
-                != entity.value
-            ):
-                return False
-        except StopIteration:
-            # Metadata file entity not present in data file
-            return False
-    return True
+    #
+    # That is exactly subset containment of the (key, value) pairs, evaluated here as a
+    #   single C-level frozenset comparison over the sets cached on each BIDSFilePath at
+    #   construction, in place of the previous
+    #   `next(item for item in datafile.entities if item.key == entity.key)` linear scan
+    #   (one generator built and consumed per metadata entity per call: 304k calls and
+    #   1.37M generator steps for one BIDS2I75 conversion).
+    #
+    # Why the two are the same predicate. Write E_m and E_d for the metadata and data
+    #   files' (key, value) sets. BIDSFilePath rejects duplicate entity keys in BOTH
+    #   constructors, so within one file a key appears at most once and E_d is a
+    #   faithful rendering of `datafile.entities`.
+    #   - If E_m <= E_d: for each metadata entity (k, v), (k, v) is in E_d, so the data
+    #     file has an entity with key k; key-uniqueness makes it THE entity next() would
+    #     have found, and its value is v, so no iteration returned False. Old: True.
+    #   - If the old form returned True: for each metadata entity (k, v), next()
+    #     succeeded and the found entity's value equalled v, so (k, v) is in E_d. Hence
+    #     E_m <= E_d.
+    #   Duplicate entities on the METADATA side (which the constructors reject, but
+    #   which the old form tolerated) would not separate the two either: a repeated
+    #   (k, v) re-tests an identical condition and collapses in E_m, while (k, v1) and
+    #   (k, v2) with v1 != v2 fail both forms, since E_d holds at most one pair for k.
+    return metafile.entityset <= datafile.entityset
 
 
 def is_applicable(
