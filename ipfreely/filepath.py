@@ -9,27 +9,30 @@ from .ruleset import Ruleset
 
 
 class BIDSEntity:
+    # Two construction forms:
+    # - BIDSEntity(["sub", "01"]): a single key-value list, as produced by splitting
+    #   an underscore-separated filename token on "-". This form is fed from dataset
+    #   filenames, so a wrongly-shaped list means a malformed BIDS file name rather
+    #   than a programming error: it raises BIDSError, which is what
+    #   BIDSFilePath.__init__ below expects to catch.
+    # - BIDSEntity("sub", "01"): key and value as separate arguments. Only ever
+    #   invoked programmatically, so bad input here is a TypeError.
     def __init__(self, *args):
-        if len(args) == 1:
-            if (
-                not isinstance(args[0], list)
-                or len(args[0]) != 2
-                or not all(isinstance(item, str) for item in args[0])
-            ):
-                raise TypeError(
-                    "Invalid construction of BIDSEntity class"
-                    f' from "{list(map(str, *args))}"'
+        if len(args) == 1 and isinstance(args[0], list):
+            if len(args[0]) != 2 or not all(isinstance(item, str) for item in args[0]):
+                raise BIDSError(
+                    f'Invalid construction of BIDSEntity class from "{args[0]}"'
                 )
             self.key = args[0][0]
             self.value = args[0][1]
             return
-        if len(args) != 2 or all(isinstance(item, str) for item in args):
+        if len(args) != 2 or not all(isinstance(item, str) for item in args):
             raise TypeError(
                 "Invalid construction of BIDSEntity class"
-                f' from "{list(map(str, *args))}"'
+                f' from "{list(map(str, args))}"'
             )
         self.key = args[0]
-        self.key = args[1]
+        self.value = args[1]
 
     def __getitem__(self, index: int) -> str:
         if index == 0:
