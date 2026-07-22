@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from functools import cached_property
 import os
 import pathlib
 
@@ -49,7 +50,12 @@ class BIDSEntity:
 class BIDSFilePath:
 
     # Public attributes:
-    # - relpath:   pathlib.Path, relative to the dataset root.
+    # - relpath:   pathlib.Path, relative to the dataset root. Materialised EAGERLY
+    #              by the parse-a-real-file constructor (which has a genuine Path in
+    #              hand and derives stem / extension from it) and LAZILY by the
+    #              synthesise-a-candidate constructor, which stores nothing but
+    #              strings and defers the Path to first access. See the
+    #              cached_property below.
     # - pathstr:   str(relpath), cached at construction. This is the *identity key*
     #              of the class: __eq__, __hash__ and __str__ are all defined
     #              against it rather than against relpath.
@@ -169,57 +175,115 @@ class BIDSFilePath:
             and isinstance(args[3], str)
             and args[3].startswith(".")
         ):
-            self.entities = args[1]
-            # Same mapping, same duplicate-key rejection, as the parse-a-real-file
-            #   branch above. Synthesising this branch's entity lists from the
-            #   entities of an already-parsed data file (a powerset subset in
-            #   _greedy.build_candidates, disjoint directory / non-directory
-            #   groups in _tiered._candidate_metapaths) means a repeated key is
-            #   unreachable in practice; the check is kept anyway so that
-            #   `entitymap` and `entityset` are lossless renderings of `entities`
-            #   for EVERY instance rather than only for parsed ones, which is the
-            #   invariant utils.applicability relies on.
-            self.entitymap = {entity.key: entity.value for entity in args[1]}
-            if len(self.entitymap) != len(args[1]):
-                raise BIDSError(f"Duplicate entities in BIDS file {args[1]}")
-            self.entityset = frozenset(self.entitymap.items())
-            self.suffix = args[2]
-            self.extension = args[3]
-            self.stem = (
-                "_".join(map(str, self.entities))
-                + ("_" if self.entities and self.suffix else "")
-                + ("" if self.suffix is None else f"{self.suffix}")
-            )
-            name = f"{self.stem}{self.extension}"
-            self.relpath = args[0] / name
-            # Assemble the key by string concatenation rather than via
-            #   str(self.relpath). This constructor is the hot one -- the greedy
-            #   exporter runs it hundreds of thousands of times -- and
-            #   PurePath.__str__ has to re-join the parsed parts on first access.
-            #   str(args[0]) is memoised on the parent Path, and the same parent
-            #   object is reused across every candidate synthesised for it, so
-            #   this reduces to two string concatenations per candidate.
-            # The result is identical to str(args[0] / name) for any relative
-            #   parent: pathlib renders a parent of "." as no leading component
-            #   at all, and otherwise joins with the flavour separator, which for
-            #   the native pathlib.Path required here is os.sep. The endswith
-            #   branch covers a root parent, whose rendering already ends in the
-            #   separator.
-            # dirprefix absorbs the three-way join: it is "" at the dataset root
-            #   and otherwise ends in the separator, so pathstr is one
-            #   concatenation and the ancestry key comes out for free.
-            parent_str = str(args[0])
-            self.parentstr = parent_str
-            if parent_str == ".":
-                self.dirprefix = ""
-            elif parent_str.endswith(os.sep):
-                self.dirprefix = parent_str
-            else:
-                self.dirprefix = parent_str + os.sep
-            self.pathstr = self.dirprefix + name
-            self.depth = self.dirprefix.count(os.sep) + 1
+            self._synthesise(self.parentkeys(args[0]), args[1], args[2], args[3])
             return
         raise TypeError(f"Unrecognised initialisation of filepath.BIDSFilePath: {args}")
+
+    @staticmethod
+    def parentkeys(parent: pathlib.Path) -> "tuple[str, str]":
+        # The pair of cached parent-directory strings -- (parentstr, dirprefix) --
+        #   that a synthesised candidate needs, derived ONCE from the parent Path.
+        # Split out of the constructor because the greedy exporter proposes the
+        #   whole 2^entities power set beneath a single parent directory: computing
+        #   these two strings per parent rather than per candidate turns hundreds of
+        #   thousands of str(Path) calls and separator tests into a few hundred.
+        # dirprefix is parentstr rendered as a directory prefix: "" at the dataset
+        #   root (pathlib renders that parent as "." but joins it as nothing at
+        #   all), parentstr itself when it already ends in the separator (a root
+        #   parent), otherwise parentstr plus the separator. Concatenating it with a
+        #   file name therefore reproduces str(parent / name) exactly, for the
+        #   native pathlib.Path whose flavour separator is os.sep.
+        parentstr = str(parent)
+        if parentstr == ".":
+            return (parentstr, "")
+        if parentstr.endswith(os.sep):
+            return (parentstr, parentstr)
+        return (parentstr, parentstr + os.sep)
+
+    @classmethod
+    def candidate(
+        cls,
+        parentkeys: "tuple[str, str]",
+        entities: "list[BIDSEntity]",
+        suffix: "str | None",
+        extension: str,
+    ) -> "BIDSFilePath":
+        # Fast construction path for INTERNALLY generated candidate metadata paths
+        #   (_greedy.build_candidates). Identical in every resulting attribute to
+        #   BIDSFilePath(parent, entities, suffix, extension) with
+        #   parentkeys == BIDSFilePath.parentkeys(parent); it differs only in
+        #   skipping the four-argument constructor's isinstance gauntlet, whose
+        #   per-entity all(...) generator is pure overhead when the caller
+        #   demonstrably passes well-formed arguments. The public constructor keeps
+        #   that validation, so a malformed programmatic construction still raises
+        #   TypeError; this is a private-by-convention shortcut, not a relaxation of
+        #   the class's contract.
+        self = object.__new__(cls)
+        self._synthesise(parentkeys, entities, suffix, extension)
+        return self
+
+    def _synthesise(
+        self,
+        parentkeys: "tuple[str, str]",
+        entities: "list[BIDSEntity]",
+        suffix: "str | None",
+        extension: str,
+    ) -> None:
+        # The shared body of the synthesise-a-candidate form: the sole
+        #   implementation, reached both through the validating four-argument
+        #   constructor and through candidate() above, so the two cannot drift.
+        self.entities = entities
+        # Same mapping, same duplicate-key rejection, as the parse-a-real-file
+        #   branch. Synthesising this form's entity lists from the entities of an
+        #   already-parsed data file (a powerset subset in
+        #   _greedy.build_candidates, disjoint directory / non-directory groups in
+        #   _tiered._candidate_metapaths) means a repeated key is unreachable in
+        #   practice; the check is kept anyway so that `entitymap` and `entityset`
+        #   are lossless renderings of `entities` for EVERY instance rather than
+        #   only for parsed ones, which is the invariant utils.applicability
+        #   relies on.
+        self.entitymap = {entity.key: entity.value for entity in entities}
+        if len(self.entitymap) != len(entities):
+            raise BIDSError(f"Duplicate entities in BIDS file {entities}")
+        self.entityset = frozenset(self.entitymap.items())
+        self.suffix = suffix
+        self.extension = extension
+        self.stem = (
+            "_".join(map(str, entities))
+            + ("_" if entities and suffix else "")
+            + ("" if suffix is None else f"{suffix}")
+        )
+        # No pathlib.Path is built here at all; `relpath` is deferred to the
+        #   cached_property below. The overwhelming majority of candidates are only
+        #   ever hashed, compared and rejected inside _greedy.build_candidates /
+        #   best_metadata_path -- every one of those operations reads a cached
+        #   string -- so the Path that the previous `args[0] / name` eagerly
+        #   materialised was discarded unused for all but the few hundred
+        #   candidates actually chosen and written out.
+        # Assembling pathstr by concatenation rather than via str(relpath) is what
+        #   makes that possible, and is unchanged in result: dirprefix absorbs the
+        #   parent-plus-separator join (see parentkeys), so pathstr is exactly
+        #   str(parent / f"{stem}{extension}").
+        self.parentstr, self.dirprefix = parentkeys
+        self.pathstr = self.dirprefix + self.stem + extension
+        self.depth = self.dirprefix.count(os.sep) + 1
+
+    @cached_property
+    def relpath(self) -> pathlib.Path:
+        # Reached ONLY by instances built through the synthesise-a-candidate form,
+        #   which stores no Path; the parse-a-real-file form assigns self.relpath
+        #   directly and, cached_property being a non-data descriptor, that
+        #   instance-dictionary entry shadows this and the property never runs.
+        #   Once it has run, its result is likewise stored in the instance
+        #   dictionary, so repeated reads cost an ordinary attribute lookup.
+        # Reconstructing from pathstr rather than from a retained parent Path keeps
+        #   this exact: pathstr IS str(parent / name) (see _synthesise), and
+        #   pathlib's parse of a rendered path recovers the same components, so
+        #   Path(pathstr) equals -- and is indistinguishable in parts, parent,
+        #   parents, name, stem and suffixes from -- the parent / name that used to
+        #   be built eagerly. It also means the class holds no reference to the
+        #   parent Path object.
+        return pathlib.Path(self.pathstr)
 
     def check(self, ruleset: Ruleset) -> None:
         # A data file must always carry a datatype suffix; a metadata file must

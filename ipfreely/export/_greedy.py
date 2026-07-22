@@ -126,16 +126,31 @@ def export_greedy(context: ExportContext, *, allow_suffixless: bool) -> None:
         #   suffix -> a bare ".json") is excluded, so a suffixless candidate is emitted
         #   only when it carries >=1 entity. Restricted to ".json"; .bval/.bvec/.tsv
         #   stay suffix-specific.
+        # BIDSFilePath.candidate() rather than the four-argument constructor: the
+        #   arguments here are well-formed by construction (a parent drawn from a
+        #   parsed data file's own ancestry, a subset of that data file's own
+        #   entities, its own suffix, and the caller's extension), so the
+        #   constructor's isinstance gauntlet -- including an all() generator over
+        #   every entity -- is pure overhead at this call count. The parent's two
+        #   cached strings are computed once per parent directory instead of once
+        #   per candidate, and no pathlib.Path is materialised per candidate at all.
         emit_suffixless = allow_suffixless and extension == ".json"
         for datapath in datapaths:
+            suffix = datapath.suffix
+            entity_powerset = list(powerset(datapath.entities))
             for parent in datapath.relpath.parents:
-                for entities in powerset(datapath.entities):
+                parentkeys = BIDSFilePath.parentkeys(parent)
+                for entities in entity_powerset:
                     candidates.add(
-                        BIDSFilePath(parent, list(entities), datapath.suffix, extension)
+                        BIDSFilePath.candidate(
+                            parentkeys, list(entities), suffix, extension
+                        )
                     )
                     if emit_suffixless and entities:
                         candidates.add(
-                            BIDSFilePath(parent, list(entities), None, extension)
+                            BIDSFilePath.candidate(
+                                parentkeys, list(entities), None, extension
+                            )
                         )
         return candidates
 
