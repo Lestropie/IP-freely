@@ -1,5 +1,4 @@
 {
-    "ReceiveCoilActiveElements": "HC1-7;NC1",
     "ImageOrientationPatientDICOM": [
         0.999978,
         -0.0033432,
@@ -83,6 +82,7 @@
         "ses-000001/func/sub-123628_ses-000001_task-movie_echo-3_bold.json",
         "ses-000001/func/sub-123628_ses-000001_task-movie_echo-3_bold.nii.gz"
     ],
+    "ReceiveCoilActiveElements": "HC1-7;NC1",
     "SAR": 0.110971,
     "ShimSetting": [
         2573,

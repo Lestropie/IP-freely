@@ -1,4 +1,5 @@
 {
+    "AcquisitionTime": "13:50:43.267500",
     "ImageOrientationPatientDICOM": [
         0.999317,
         -0.0032517,
@@ -8,6 +9,8 @@
         -0.0879693
     ],
     "ImageOrientationText": "Tra>Cor(-5.0)>Sag(-2.1)",
+    "ImagingFrequency": 123.230683,
+    "SAR": 0.130825,
     "ShimSetting": [
         2569,
         -11301,
@@ -18,8 +21,5 @@
         -50,
         72
     ],
-    "ImagingFrequency": 123.230683,
-    "SAR": 0.130825,
-    "WipMemBlock": "39751211-dabe-4300-a795-b8f556c145a4||Sequence: R016 ve11e/master r/434b28f1; Aug  7 2019 19:06:17 by eja",
-    "AcquisitionTime": "13:50:43.267500"
+    "WipMemBlock": "39751211-dabe-4300-a795-b8f556c145a4||Sequence: R016 ve11e/master r/434b28f1; Aug  7 2019 19:06:17 by eja"
 }

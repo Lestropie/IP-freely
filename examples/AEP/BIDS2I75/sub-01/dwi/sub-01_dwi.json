@@ -1,5 +1,4 @@
 {
-    "ReceiveCoilActiveElements": "HC1-7;NC1",
     "ImageOrientationPatientDICOM": [
         0.999317,
         -0.0032517,
@@ -9,6 +8,7 @@
         -0.0879693
     ],
     "ImageOrientationText": "Tra>Cor(-5.0)>Sag(-2.1)",
+    "ReceiveCoilActiveElements": "HC1-7;NC1",
     "ShimSetting": [
         2569,
         -11301,

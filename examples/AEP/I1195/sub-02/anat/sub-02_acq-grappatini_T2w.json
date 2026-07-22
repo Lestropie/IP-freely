@@ -1,5 +1,14 @@
 {
     "AcquisitionTime": "15:01:36.730000",
+    "ImageOrientationPatientDICOM": [
+        1,
+        -0.000233888,
+        4.933e-12,
+        9.62488e-05,
+        0.411516,
+        -0.911402
+    ],
+    "ImageOrientationText": "Cor>Tra(-24.3)>Sag(-0.0)",
     "ImagingFrequency": 123.23785,
     "ProtocolName": "T2map_CorOblHipp_RL-",
     "PulseSequenceDetails": "%CustomerSeq%\\accT2map_wip899c",
@@ -61,14 +70,5 @@
         61.4688,
         3.70312
     ],
-    "WipMemBlock": "WIP_Identifier: WIP#899C_VE11C",
-    "ImageOrientationPatientDICOM": [
-        1,
-        -0.000233888,
-        4.933e-12,
-        9.62488e-05,
-        0.411516,
-        -0.911402
-    ],
-    "ImageOrientationText": "Cor>Tra(-24.3)>Sag(-0.0)"
+    "WipMemBlock": "WIP_Identifier: WIP#899C_VE11C"
 }

@@ -1,18 +1,7 @@
 {
-    "MatrixCoilMode": "SENSE",
     "AcquisitionMatrixPE": 240,
-    "PercentPhaseFOV": 93.75,
-    "PhaseEncodingSteps": 240,
     "DwellTime": 8.1e-06,
     "EchoTime": 0.00288,
-    "PixelBandwidth": 240,
-    "PulseSequenceDetails": "%CustomerSeq%\\cstfl_wip925b",
-    "ReconMatrixPE": 240,
-    "ScanOptions": "IR",
-    "SequenceName": "WIP_cmp3d1_16ns",
-    "SliceThickness": 1,
-    "WipMemBlock": "WIP_Identifier: WIP#925B",
-    "RepetitionTime": 5,
     "ImageComments": "Simulated T1 Contrast",
     "ImageType": [
         "DERIVED",
@@ -20,5 +9,16 @@
         "M",
         "ND"
     ],
-    "RawImage": false
+    "MatrixCoilMode": "SENSE",
+    "PercentPhaseFOV": 93.75,
+    "PhaseEncodingSteps": 240,
+    "PixelBandwidth": 240,
+    "PulseSequenceDetails": "%CustomerSeq%\\cstfl_wip925b",
+    "RawImage": false,
+    "ReconMatrixPE": 240,
+    "RepetitionTime": 5,
+    "ScanOptions": "IR",
+    "SequenceName": "WIP_cmp3d1_16ns",
+    "SliceThickness": 1,
+    "WipMemBlock": "WIP_Identifier: WIP#925B"
 }

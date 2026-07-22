@@ -1,5 +1,5 @@
 {
-    "ImagingFrequency": 123.237838,
+    "AcquisitionTime": "14:54:49.485000",
     "ImageOrientationPatientDICOM": [
         1,
         -0.000233888,
@@ -9,7 +9,7 @@
         -0.911402
     ],
     "ImageOrientationText": "Cor>Tra(-24.3)>Sag(-0.0)",
-    "AcquisitionTime": "14:54:49.485000",
+    "ImagingFrequency": 123.237838,
     "SAR": 0.361894,
     "ShimSetting": [
         -1262,

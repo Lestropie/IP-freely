@@ -1,13 +1,6 @@
 {
     "ConsistencyInfo": "N4_VE11C_LATEST_20160120",
     "DeviceSerialNumber": "2",
-    "InstitutionAddress": "Institution Two Address",
-    "InstitutionName": "Institution Two",
-    "InstitutionalDepartmentName": "Institution Two Department",
-    "ManufacturersModelName": "Prisma_fit",
-    "ProcedureStepDescription": "2019_MBC_PROTOCOLS_VE11C^SB.2020.353 AEP study - 64 Channel",
-    "StationName": "S2",
-    "TxRefAmp": 228.286,
     "ImageOrientationPatientDICOM": [
         1,
         0,
@@ -17,6 +10,11 @@
         -0.5
     ],
     "ImageOrientationText": "Tra>Cor(-30.0)",
+    "InstitutionAddress": "Institution Two Address",
+    "InstitutionName": "Institution Two",
+    "InstitutionalDepartmentName": "Institution Two Department",
+    "ManufacturersModelName": "Prisma_fit",
+    "ProcedureStepDescription": "2019_MBC_PROTOCOLS_VE11C^SB.2020.353 AEP study - 64 Channel",
     "ShimSetting": [
         -1265,
         4850,
@@ -26,5 +24,7 @@
         -88,
         -120,
         13
-    ]
+    ],
+    "StationName": "S2",
+    "TxRefAmp": 228.286
 }

@@ -1,5 +1,4 @@
 {
-    "ReceiveCoilActiveElements": "HC1-7;NC1",
     "ImageOrientationPatientDICOM": [
         0,
         1,
@@ -11,6 +10,7 @@
     "ImageOrientationText": "Sag>Tra(1.4)",
     "ImagingFrequency": 123.230699,
     "ProtocolName": "T1map_MP2RAGE_Sag_AP",
+    "ReceiveCoilActiveElements": "HC1-7;NC1",
     "SAR": 0.0173708,
     "ShimSetting": [
         2563,

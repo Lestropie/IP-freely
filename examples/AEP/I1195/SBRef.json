@@ -1,8 +1,12 @@
 {
     "AcquisitionNumber": 1,
     "BodyPartExamined": "BRAIN",
+    "CoilCombinationMethod": "Sum of Squares",
     "ConversionSoftware": "dcm2niix",
     "ConversionSoftwareVersion": "v1.0.20240202",
+    "ImageComments": "Single-band reference SENSE1+",
+    "InPlanePhaseEncodingDirectionDICOM": "COL",
+    "MRAcquisitionType": "2D",
     "MagneticFieldStrength": 3,
     "Manufacturer": "Siemens",
     "Modality": "MR",
@@ -10,13 +14,9 @@
     "PatientPosition": "HFS",
     "PercentSampling": 100,
     "PhaseResolution": 1,
-    "ReceiveCoilName": "HeadNeck_64",
-    "SoftwareVersions": "syngo MR E11",
-    "CoilCombinationMethod": "Sum of Squares",
-    "InPlanePhaseEncodingDirectionDICOM": "COL",
-    "ScanningSequence": "EP",
-    "MRAcquisitionType": "2D",
     "ReceiveCoilActiveElements": "HC1-7;NC1",
+    "ReceiveCoilName": "HeadNeck_64",
+    "ScanningSequence": "EP",
     "SequenceVariant": "SK\\SS",
-    "ImageComments": "Single-band reference SENSE1+"
+    "SoftwareVersions": "syngo MR E11"
 }

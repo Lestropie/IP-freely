@@ -1,5 +1,4 @@
 {
-    "TxRefAmp": 228.286,
     "AcquisitionTime": "15:03:40.822500",
     "ImageOrientationPatientDICOM": [
         0.999488,
@@ -21,5 +20,6 @@
         -1281,
         -547,
         -176
-    ]
+    ],
+    "TxRefAmp": 228.286
 }

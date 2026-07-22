@@ -1,5 +1,5 @@
 {
     "AcquisitionTime": "15:40:16.592500",
-    "WipMemBlock": "20f66d17-bf26-4ef3-a5b6-9398403b10d8||Sequence: R016 ve11c/master r/e634e98; Dec 19 2017 11:22:56 by eja",
-    "ImagingFrequency": 123.23784
+    "ImagingFrequency": 123.23784,
+    "WipMemBlock": "20f66d17-bf26-4ef3-a5b6-9398403b10d8||Sequence: R016 ve11c/master r/e634e98; Dec 19 2017 11:22:56 by eja"
 }

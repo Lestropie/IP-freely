@@ -8,6 +8,7 @@
         -0.500131
     ],
     "ImageOrientationText": "Tra>Cor(-30.0)>Sag(-0.4)",
+    "SeriesDescription": "fMRI_AxObl_AP_OneBack-CMRR_SBRef",
     "ShimSetting": [
         2573,
         -11302,
@@ -18,6 +19,5 @@
         -80,
         88
     ],
-    "VendorReportedEchoSpacing": 0.00054,
-    "SeriesDescription": "fMRI_AxObl_AP_OneBack-CMRR_SBRef"
+    "VendorReportedEchoSpacing": 0.00054
 }

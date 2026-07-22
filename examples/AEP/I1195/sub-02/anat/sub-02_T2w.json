@@ -6,6 +6,6 @@
     "InstitutionalDepartmentName": "Institution Two Department",
     "ManufacturersModelName": "Prisma_fit",
     "ProcedureStepDescription": "2019_MBC_PROTOCOLS_VE11C^SB.2020.353 AEP study - 64 Channel",
-    "StationName": "S2",
-    "ReceiveCoilActiveElements": "HC1-7;NC1"
+    "ReceiveCoilActiveElements": "HC1-7;NC1",
+    "StationName": "S2"
 }

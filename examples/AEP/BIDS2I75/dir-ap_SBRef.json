@@ -4,21 +4,21 @@
     "BaseResolution": 128,
     "DerivedVendorReportedEchoSpacing": 0.000589979,
     "DwellTime": 1.9e-06,
+    "EchoTime": 0.083,
     "EchoTrainLength": 96,
     "EffectiveEchoSpacing": 0.000589979,
     "PartialFourier": 0.75,
+    "PercentPhaseFOV": 100,
     "PhaseEncodingSteps": 96,
     "PixelBandwidth": 2055,
     "PulseSequenceDetails": "%CustomerSeq%\\cmrr_mbep2d_diff",
     "ReconMatrixPE": 128,
     "RepetitionTime": 3.065,
     "ScanOptions": "PFP\\EXT",
-    "SliceThickness": 1.8,
-    "SpacingBetweenSlices": 1.8,
-    "TotalReadoutTime": 0.0749273,
-    "EchoTime": 0.083,
-    "PercentPhaseFOV": 100,
     "SequenceName": "epse2d1_128",
+    "SeriesDescription": "DWI_Ax_AP_52Dir-_SBRef",
+    "SeriesNumber": 19,
+    "SliceThickness": 1.8,
     "SliceTiming": [
         0,
         0.145,
@@ -105,6 +105,6 @@
         11.89,
         12.035
     ],
-    "SeriesDescription": "DWI_Ax_AP_52Dir-_SBRef",
-    "SeriesNumber": 19
+    "SpacingBetweenSlices": 1.8,
+    "TotalReadoutTime": 0.0749273
 }

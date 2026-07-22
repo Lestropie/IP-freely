@@ -1,5 +1,4 @@
 {
-    "TxRefAmp": 228.286,
     "ImageOrientationPatientDICOM": [
         0,
         1,
@@ -21,5 +20,6 @@
         -448,
         -39,
         -33
-    ]
+    ],
+    "TxRefAmp": 228.286
 }

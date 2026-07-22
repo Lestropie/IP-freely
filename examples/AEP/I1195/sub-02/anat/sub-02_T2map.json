@@ -1,19 +1,27 @@
 {
+    "AcquisitionTime": "15:01:36.730000",
     "ConsistencyInfo": "N4_VE11C_LATEST_20160120",
     "DeviceSerialNumber": "2",
+    "ImageOrientationPatientDICOM": [
+        1,
+        -0.000233888,
+        4.933e-12,
+        9.62488e-05,
+        0.411516,
+        -0.911402
+    ],
+    "ImageOrientationText": "Cor>Tra(-24.3)>Sag(-0.0)",
+    "ImagingFrequency": 123.23785,
     "InstitutionAddress": "Institution Two Address",
     "InstitutionName": "Institution Two",
     "InstitutionalDepartmentName": "Institution Two Department",
     "ManufacturersModelName": "Prisma_fit",
     "ProcedureStepDescription": "2019_MBC_PROTOCOLS_VE11C^SB.2020.353 AEP study - 64 Channel",
-    "StationName": "S2",
-    "TxRefAmp": 228.286,
-    "AcquisitionTime": "15:01:36.730000",
-    "ImagingFrequency": 123.23785,
     "ProtocolName": "T2map_CorOblHipp_RL-",
     "PulseSequenceDetails": "%CustomerSeq%\\accT2map_wip899c",
     "SAR": 0.363073,
     "SequenceName": "se2d16",
+    "SeriesDescription": "T2map_CorOblHipp_RL-_T2map",
     "ShimSetting": [
         -1279,
         4771,
@@ -70,15 +78,7 @@
         61.4688,
         3.70312
     ],
-    "WipMemBlock": "WIP_Identifier: WIP#899C_VE11C",
-    "ImageOrientationPatientDICOM": [
-        1,
-        -0.000233888,
-        4.933e-12,
-        9.62488e-05,
-        0.411516,
-        -0.911402
-    ],
-    "ImageOrientationText": "Cor>Tra(-24.3)>Sag(-0.0)",
-    "SeriesDescription": "T2map_CorOblHipp_RL-_T2map"
+    "StationName": "S2",
+    "TxRefAmp": 228.286,
+    "WipMemBlock": "WIP_Identifier: WIP#899C_VE11C"
 }

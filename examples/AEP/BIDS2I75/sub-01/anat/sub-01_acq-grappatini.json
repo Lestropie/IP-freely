@@ -1,6 +1,5 @@
 {
-    "ReceiveCoilActiveElements": "HC1-7;NC1",
-    "ImagingFrequency": 123.230691,
+    "AcquisitionTime": "13:42:42.435000",
     "ImageOrientationPatientDICOM": [
         0.999942,
         0.0107392,
@@ -10,9 +9,10 @@
         -0.892415
     ],
     "ImageOrientationText": "Cor>Tra(-26.8)>Sag(0.5)",
-    "AcquisitionTime": "13:42:42.435000",
+    "ImagingFrequency": 123.230691,
     "ProtocolName": "T2Map_CorOblHipp_RL",
     "PulseSequenceDetails": "%CustomerSeq%\\accT2map_wip899c_ve11e",
+    "ReceiveCoilActiveElements": "HC1-7;NC1",
     "SAR": 0.379849,
     "SequenceName": "WIP_se2d16",
     "ShimSetting": [

@@ -1,8 +1,8 @@
 {
     "CoilCombinationMethod": "Sum of Squares",
+    "ImageComments": "Single-band reference SENSE1+",
     "InPlanePhaseEncodingDirectionDICOM": "COL",
-    "ScanningSequence": "EP",
     "MRAcquisitionType": "2D",
-    "SequenceVariant": "SK\\SS",
-    "ImageComments": "Single-band reference SENSE1+"
+    "ScanningSequence": "EP",
+    "SequenceVariant": "SK\\SS"
 }

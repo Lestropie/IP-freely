@@ -1,4 +1,5 @@
 {
+    "AcquisitionTime": "15:13:36.647500",
     "ImageOrientationPatientDICOM": [
         0.999928,
         0.00140012,
@@ -17,6 +18,5 @@
         -236,
         -89,
         -19
-    ],
-    "AcquisitionTime": "15:13:36.647500"
+    ]
 }

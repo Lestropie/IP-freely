@@ -1,19 +1,19 @@
 {
-    "MatrixCoilMode": "GRAPPA",
-    "ParallelReductionFactorInPlane": 2,
-    "RefLinesPE": 24,
     "AcquisitionMatrixPE": 240,
-    "PercentPhaseFOV": 93.75,
-    "PhaseEncodingSteps": 240,
     "BaseResolution": 256,
     "DwellTime": 8.9e-06,
-    "PixelBandwidth": 220,
     "EchoTrainLength": 16,
     "FlipAngle": 180,
+    "ImageComments": "Simulated TSE Contrast",
+    "MatrixCoilMode": "GRAPPA",
+    "ParallelReductionFactorInPlane": 2,
+    "PercentPhaseFOV": 93.75,
+    "PhaseEncodingSteps": 240,
+    "PixelBandwidth": 220,
     "ReconMatrixPE": 480,
+    "RefLinesPE": 24,
     "RepetitionTime": 3.91,
     "SequenceVariant": "SP",
     "SliceThickness": 3.6,
-    "SpacingBetweenSlices": 3.96,
-    "ImageComments": "Simulated TSE Contrast"
+    "SpacingBetweenSlices": 3.96
 }

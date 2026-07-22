@@ -1,5 +1,4 @@
 {
-    "RawImage": false,
     "ImageComments": "T2 Map [ms x10]",
     "ImageType": [
         "ORIGINAL",
@@ -10,5 +9,6 @@
         "MAP",
         "WIP899C"
     ],
+    "RawImage": false,
     "SeriesNumber": 12
 }

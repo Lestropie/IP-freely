@@ -1,14 +1,7 @@
 {
+    "AcquisitionTime": "13:42:42.435000",
     "ConsistencyInfo": "N4_VE11E_LATEST_20181129",
     "DeviceSerialNumber": "1",
-    "InstitutionAddress": "Institution One Address",
-    "InstitutionName": "Institution One",
-    "InstitutionalDepartmentName": "Institution One Department",
-    "ManufacturersModelName": "Prisma",
-    "ProcedureStepDescription": "MR Brain",
-    "StationName": "S1",
-    "TxRefAmp": 228.481,
-    "ImagingFrequency": 123.230691,
     "ImageOrientationPatientDICOM": [
         0.999942,
         0.0107392,
@@ -18,11 +11,17 @@
         -0.892415
     ],
     "ImageOrientationText": "Cor>Tra(-26.8)>Sag(0.5)",
-    "AcquisitionTime": "13:42:42.435000",
+    "ImagingFrequency": 123.230691,
+    "InstitutionAddress": "Institution One Address",
+    "InstitutionName": "Institution One",
+    "InstitutionalDepartmentName": "Institution One Department",
+    "ManufacturersModelName": "Prisma",
+    "ProcedureStepDescription": "MR Brain",
     "ProtocolName": "T2Map_CorOblHipp_RL",
     "PulseSequenceDetails": "%CustomerSeq%\\accT2map_wip899c_ve11e",
     "SAR": 0.379849,
     "SequenceName": "WIP_se2d16",
+    "SeriesDescription": "T2Map_CorOblHipp_RL_R2map",
     "ShimSetting": [
         2566,
         -11317,
@@ -79,6 +78,7 @@
         61.4844,
         3.71875
     ],
-    "WipMemBlock": "WIP_Identifier: WIP#899C_VE11E",
-    "SeriesDescription": "T2Map_CorOblHipp_RL_R2map"
+    "StationName": "S1",
+    "TxRefAmp": 228.481,
+    "WipMemBlock": "WIP_Identifier: WIP#899C_VE11E"
 }

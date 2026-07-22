@@ -1,21 +1,22 @@
 {
-    "MatrixCoilMode": "SENSE",
-    "PercentPhaseFOV": 100,
-    "SliceThickness": 2,
-    "SpacingBetweenSlices": 2,
-    "SpoilingState": true,
     "AcquisitionMatrixPE": 384,
     "BaseResolution": 384,
     "DwellTime": 7.2e-06,
     "EchoTrainLength": 17,
     "FlipAngle": 119,
+    "MatrixCoilMode": "SENSE",
+    "PercentPhaseFOV": 100,
     "PhaseEncodingSteps": 595,
     "PhaseOversampling": 0.54,
+    "PixelBandwidth": 180,
     "ProtocolName": "T2w_CorOblHipp_RL-",
+    "PulseSequenceDetails": "%SiemensSeq%\\tse",
     "ReconMatrixPE": 384,
     "RepetitionTime": 8.1,
     "ScanOptions": "SAT1",
     "SequenceName": "*tseR2d1rr17",
+    "SequenceVariant": "SK\\SP\\OSP",
+    "SliceThickness": 2,
     "SliceTiming": [
         4.04688,
         0,
@@ -54,7 +55,6 @@
         7.875,
         3.82812
     ],
-    "PixelBandwidth": 180,
-    "PulseSequenceDetails": "%SiemensSeq%\\tse",
-    "SequenceVariant": "SK\\SP\\OSP"
+    "SpacingBetweenSlices": 2,
+    "SpoilingState": true
 }

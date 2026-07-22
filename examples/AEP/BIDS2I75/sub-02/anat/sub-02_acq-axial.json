@@ -1,5 +1,4 @@
 {
-    "TxRefAmp": 219.935,
     "AcquisitionTime": "14:28:41.430000",
     "ImageOrientationPatientDICOM": [
         0.999879,
@@ -72,5 +71,6 @@
         72.2969,
         4.29688
     ],
+    "TxRefAmp": 219.935,
     "VendorReportedEchoSpacing": 0.01008
 }

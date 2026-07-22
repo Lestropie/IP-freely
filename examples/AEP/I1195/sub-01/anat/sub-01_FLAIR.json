@@ -1,14 +1,7 @@
 {
+    "AcquisitionTime": "13:29:25.852500",
     "ConsistencyInfo": "N4_VE11E_LATEST_20181129",
     "DeviceSerialNumber": "1",
-    "InstitutionAddress": "Institution One Address",
-    "InstitutionName": "Institution One",
-    "InstitutionalDepartmentName": "Institution One Department",
-    "ManufacturersModelName": "Prisma",
-    "ProcedureStepDescription": "MR Brain",
-    "StationName": "S1",
-    "TxRefAmp": 228.481,
-    "ImagingFrequency": 123.230689,
     "ImageOrientationPatientDICOM": [
         0,
         1,
@@ -18,6 +11,13 @@
         -0.999701
     ],
     "ImageOrientationText": "Sag>Tra(1.4)",
+    "ImagingFrequency": 123.230689,
+    "InstitutionAddress": "Institution One Address",
+    "InstitutionName": "Institution One",
+    "InstitutionalDepartmentName": "Institution One Department",
+    "ManufacturersModelName": "Prisma",
+    "ProcedureStepDescription": "MR Brain",
+    "SAR": 0.0996484,
     "ShimSetting": [
         2566,
         -11311,
@@ -28,6 +28,6 @@
         -24,
         74
     ],
-    "AcquisitionTime": "13:29:25.852500",
-    "SAR": 0.0996484
+    "StationName": "S1",
+    "TxRefAmp": 228.481
 }

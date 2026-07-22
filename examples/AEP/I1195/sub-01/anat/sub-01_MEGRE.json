@@ -1,14 +1,12 @@
 {
     "ConsistencyInfo": "N4_VE11E_LATEST_20181129",
     "DeviceSerialNumber": "1",
+    "ImagingFrequency": 123.230683,
     "InstitutionAddress": "Institution One Address",
     "InstitutionName": "Institution One",
     "InstitutionalDepartmentName": "Institution One Department",
     "ManufacturersModelName": "Prisma",
     "ProcedureStepDescription": "MR Brain",
-    "StationName": "S1",
-    "TxRefAmp": 228.481,
-    "ImagingFrequency": 123.230683,
     "ReceiveCoilActiveElements": "HC1-7;NC1,2",
     "SAR": 0.00987845,
     "ShimSetting": [
@@ -20,5 +18,7 @@
         -26,
         -65,
         64
-    ]
+    ],
+    "StationName": "S1",
+    "TxRefAmp": 228.481
 }

@@ -1,7 +1,7 @@
 {
-    "ReceiveCoilActiveElements": "HC1-7;NC1,2",
     "AcquisitionTime": "13:35:26.515000",
     "ImagingFrequency": 123.230685,
+    "ReceiveCoilActiveElements": "HC1-7;NC1,2",
     "SAR": 0.378804,
     "ShimSetting": [
         2571,
