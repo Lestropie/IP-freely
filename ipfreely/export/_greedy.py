@@ -165,9 +165,10 @@ def export_greedy(context: ExportContext, *, allow_suffixless: bool) -> None:
         for candidate in candidates:
             if candidate in rejected:
                 continue
-            # Stringify the candidate's parent directory once per candidate, not once
-            #   per data file.
-            candidate_parent_str: str = str(candidate.relpath.parent)
+            # The candidate's parent directory string is cached on the BIDSFilePath at
+            #   construction, so this is an attribute read rather than a per-candidate
+            #   pathlib parent construction plus stringification.
+            candidate_parent_str: str = candidate.parentstr
             candidate_eligible: bool = True
             datafile_matches: int = 0
             # Consult only the data files this candidate could be name-applicable to,
@@ -257,7 +258,7 @@ def export_greedy(context: ExportContext, *, allow_suffixless: bool) -> None:
         def priority(item: BIDSFilePath) -> tuple:
             return (
                 0 if item.suffix is None else 1,
-                len(item.entities) - 1024 * len(item.relpath.parents),
+                len(item.entities) - 1024 * item.depth,
                 item,
             )
 
@@ -287,7 +288,7 @@ def export_greedy(context: ExportContext, *, allow_suffixless: bool) -> None:
             )
             assign(metapath)
             old_count: int = len(remaining_set)
-            metapath_parent_str: str = str(metapath.relpath.parent)
+            metapath_parent_str: str = metapath.parentstr
             remaining_set = {
                 item
                 for item in remaining_set

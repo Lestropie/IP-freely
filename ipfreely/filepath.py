@@ -53,6 +53,22 @@ class BIDSFilePath:
     # - pathstr:   str(relpath), cached at construction. This is the *identity key*
     #              of the class: __eq__, __hash__ and __str__ are all defined
     #              against it rather than against relpath.
+    # - parentstr: str(relpath.parent), cached at construction. "." for a file at
+    #              the dataset root, matching pathlib's rendering exactly, so it
+    #              drops straight into the precomputed-string fast paths of
+    #              utils.applicability.is_applicable().
+    # - dirprefix: parentstr rendered as a *directory prefix* -- "" at the dataset
+    #              root, otherwise parentstr plus the path separator. This is the
+    #              ancestry key: directory A is an ancestor-or-self of directory B
+    #              iff B.dirprefix.startswith(A.dirprefix), and a STRICT ancestor
+    #              iff that holds and the two differ. The trailing separator is
+    #              what makes the prefix test exact -- without it "sub-1" would
+    #              spuriously prefix "sub-10". See __lt__.
+    # - depth:     len(relpath.parents), i.e. the number of components of relpath.
+    #              Equal to dirprefix.count(os.sep) + 1 because relpath is always
+    #              relative (both constructors guarantee it) and pathlib-normalised
+    #              (no trailing, doubled or "." components), and the file name
+    #              itself contains no separator.
     #
     # Why cache it: instances are dict keys and set members throughout the export
     #   pipeline (Graph.m4d / Graph.d4m, ExportContext._applicable_cache, and the
@@ -81,6 +97,16 @@ class BIDSFilePath:
         if len(args) == 2 and all(isinstance(item, pathlib.Path) for item in args):
             self.relpath = args[1].relative_to(args[0])
             self.pathstr = str(self.relpath)
+            # Derived from pathstr rather than from relpath.parent so that the two
+            #   constructors cannot drift: a parsed real file and a synthesised
+            #   candidate denoting the same file must agree on every ordering key,
+            #   not merely on pathstr. rpartition finds the last separator; its
+            #   absence means the file sits at the dataset root, where pathlib
+            #   renders the parent as ".".
+            head, sep, _ = self.pathstr.rpartition(os.sep)
+            self.parentstr = head if sep else "."
+            self.dirprefix = head + sep
+            self.depth = self.dirprefix.count(os.sep) + 1
             self.stem = self.relpath.stem
             # For some reason, pathlib.PurePath.stem yields the file name
             #   excluding only the final suffix, not all of them;
@@ -148,13 +174,19 @@ class BIDSFilePath:
             #   the native pathlib.Path required here is os.sep. The endswith
             #   branch covers a root parent, whose rendering already ends in the
             #   separator.
+            # dirprefix absorbs the three-way join: it is "" at the dataset root
+            #   and otherwise ends in the separator, so pathstr is one
+            #   concatenation and the ancestry key comes out for free.
             parent_str = str(args[0])
+            self.parentstr = parent_str
             if parent_str == ".":
-                self.pathstr = name
+                self.dirprefix = ""
             elif parent_str.endswith(os.sep):
-                self.pathstr = parent_str + name
+                self.dirprefix = parent_str
             else:
-                self.pathstr = parent_str + os.sep + name
+                self.dirprefix = parent_str + os.sep
+            self.pathstr = self.dirprefix + name
+            self.depth = self.dirprefix.count(os.sep) + 1
             return
         raise TypeError(f"Unrecognised initialisation of filepath.BIDSFilePath: {args}")
 
@@ -203,19 +235,34 @@ class BIDSFilePath:
         #   where metadata files don't need a suffix,
         #   anything that doesn't have a suffix
         #   should probably be before anything that does
-        # NB: pathlib's parents sequence does not support slicing before
-        #   Python 3.10, so materialise it as a list before dropping the
-        #   immediate parent (parents[0]).
-        if self.relpath.parent in list(other.relpath.parents)[1:]:
-            return True
-        if other.relpath.parent in list(self.relpath.parents)[1:]:
-            return False
-        if self.relpath.parent != other.relpath.parent:
+        #
+        # The hierarchy branches are expressed entirely on the cached dirprefix
+        #   strings; no PurePath list is materialised and no PurePath is compared.
+        #   The previous formulation asked whether self's parent directory appeared
+        #   in list(other.relpath.parents)[1:] -- pathlib's parents sequence does
+        #   not support slicing before Python 3.10, hence the list -- where the
+        #   [1:] drops other's own immediate parent and so makes the test STRICT
+        #   ancestry. Strictness is preserved here by requiring the two dirprefixes
+        #   to differ before the prefix test is consulted: a file therefore does
+        #   not sort before a sibling in its own directory by this branch, and
+        #   falls through to the suffix / entity-count keys below exactly as before.
+        # Why prefix testing is exact ancestry: dirprefix is the pathlib-normalised
+        #   parent directory with a trailing separator ("" at the dataset root), so
+        #   A is an ancestor-or-self directory of B iff B.dirprefix starts with
+        #   A.dirprefix. The trailing separator is load-bearing -- comparing bare
+        #   parent strings would let "sub-1" prefix "sub-10".
+        self_dir = self.dirprefix
+        other_dir = other.dirprefix
+        if self_dir != other_dir:
+            if other_dir.startswith(self_dir):
+                return True
+            if self_dir.startswith(other_dir):
+                return False
             # Don't bother trying to find the first common parent;
             #   can just do an alphanumeric sort on the whole path,
             #   and the first distinguishing factor will be
             #   the first uncommon parent
-            return str(self) < str(other)
+            return self.pathstr < other.pathstr
         if self.suffix is None and other.suffix:
             return True
         if other.suffix is None and self.suffix:
@@ -223,7 +270,7 @@ class BIDSFilePath:
         if len(self.entities) != len(other.entities):
             return len(self.entities) < len(other.entities)
         # Finally, resort to alphanumeric sorting
-        return str(self) < str(other)
+        return self.pathstr < other.pathstr
 
     def __str__(self) -> str:
         return self.pathstr

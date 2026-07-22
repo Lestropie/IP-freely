@@ -137,7 +137,10 @@ class _OrderedOccupancy:
     #   in one directory only while their entity counts differ, so track which entity
     #   counts are already spoken for.
     #
-    # Occupancy is keyed (directory, extension, data file) -> {entity count: metapath}.
+    # Occupancy is keyed (directory string, extension, data file) -> {entity count:
+    #   metapath}. The directory is keyed by its cached string rather than by a
+    #   PurePath: for a fixed flavour the two induce the same equivalence classes, and
+    #   the string needs neither construction nor a Python-level hash.
     #   A candidate is rejected when its entity count is already occupied, for a data
     #   file it covers, by a DIFFERENT emitted pattern in the same directory;
     #   re-selecting the same metapath (e.g. a second key onto one JSON) is fine.
@@ -154,7 +157,7 @@ class _OrderedOccupancy:
 
     def admissible(self, metapath: BIDSFilePath, applicable) -> bool:
         count = len(metapath.entities)
-        directory = metapath.relpath.parent
+        directory = metapath.parentstr
         return not any(
             self._used.get((directory, metapath.extension, other), {}).get(
                 count, metapath
@@ -165,7 +168,7 @@ class _OrderedOccupancy:
 
     def record(self, metapath: BIDSFilePath, applicable) -> None:
         count = len(metapath.entities)
-        directory = metapath.relpath.parent
+        directory = metapath.parentstr
         for other in applicable:
             self._used.setdefault((directory, metapath.extension, other), {})[
                 count
@@ -227,17 +230,25 @@ def export_tiered(context: ExportContext, *, expand: bool = False) -> None:
     def rank(item):
         # height (fewest parents) -> fewest entities -> most entries -> path.
         # Fewest-entities outranks file-fatness because under `ordered` the entity
-        #   count is the legality key, not merely cosmetic. The trailing metapath makes
-        #   the ordering total, so the choice never depends on generation order.
+        #   count is the legality key, not merely cosmetic. The trailing key makes the
+        #   ordering total, so the choice never depends on generation order.
+        # The trailing key is the metapath's cached path STRING, not the metapath
+        #   itself: tuple comparison only ever reaches it once height and entity count
+        #   are equal, and for two such candidates BIDSFilePath.__lt__ itself reduces
+        #   to the same alphanumeric comparison of the path. (Equal height rules out
+        #   its ancestor branches -- a strict ancestor directory is strictly
+        #   shallower -- and every candidate for one data file carries that data file's
+        #   suffix, so its suffixless-first branch cannot fire either.) Using the
+        #   string avoids paying __lt__ per comparison on every sort.
         metapath, _is_sidecar = item
         entries = (
             len(new_json_data.get(metapath, ())) if metapath.extension == ".json" else 0
         )
         return (
-            len(metapath.relpath.parents),
+            metapath.depth,
             len(metapath.entities),
             -entries,
-            metapath,
+            metapath.pathstr,
         )
 
     ranker = rank if expand else None

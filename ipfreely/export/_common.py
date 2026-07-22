@@ -77,7 +77,7 @@ class ExportContext:
         cached = self._applicable_cache.get(metapath)
         if cached is not None:
             return cached
-        metapath_parent_str = str(metapath.relpath.parent)
+        metapath_parent_str = metapath.parentstr
         result = [
             datapath
             for datapath in self.metadata
