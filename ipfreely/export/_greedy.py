@@ -135,25 +135,6 @@ def export_greedy(context: ExportContext, *, allow_suffixless: bool) -> None:
                         )
         return candidates
 
-    # TODO Functions with greatest contribution to slow runtime.
-    #   (cProfile, with the per-call columns dropped: every one read 0.000)
-    #     ncalls  tottime  cumtime  filename:lineno(function)
-    # 3040723994  372.330 1553.077  filepath.py:115(__eq__)
-    # 3230168741  840.637 1392.261  pathlib.py:663(__eq__)
-    #   70587301   44.752  789.144  applicability.py:39(is_applicable)
-    #   70587301   61.262  650.027  _collections_abc.py:1049(__contains__)
-    #  260146218   54.752  377.506  _collections_abc.py:1039(__iter__)
-    #  223426531  118.538  322.754  pathlib.py:525(__getitem__)
-    # 6461241622  422.710  441.470  pathlib.py:654(_cparts)
-    # 3460638239  126.970  126.970  {built-in method builtins.isinstance}
-    #  412966059   62.059   82.203  pathlib.py:519(__len__)
-    #  261022523   52.145   74.922  pathlib.py:600(_from_parsed_parts)
-    #
-    # - Find a more efficient way to generate the set of all possible filesystem paths
-    #   given the set of data files to which this metadata key-value applies
-    # - Try to avoid instantiation of pathlib.Paths until necessary
-    # - Try JIT compilation: https://numba.pydata.org/
-    #
     # NB: is_applicable() is called directly rather than via
     #   ExportContext.applicable_datafiles(); this is the profiled hot path, and the
     #   candidate-driven access pattern here is the opposite of that method's
