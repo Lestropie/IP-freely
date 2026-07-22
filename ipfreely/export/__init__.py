@@ -68,6 +68,8 @@ CONVERSION_RULESETS = list(EXPORTERS)
 #   converted dataset auto-selects the same ruleset on re-evaluation (the inverse of
 #   run.py's BIDSVersion -> ruleset mapping).
 OUTPUT_BIDSVERSION = {
+    "PR1003": "Pull Request 1003",
+    "I1195": "Issue 1195",
     "BIDS2I75": "BIDS 2.0 Issue 75",
 }
 
