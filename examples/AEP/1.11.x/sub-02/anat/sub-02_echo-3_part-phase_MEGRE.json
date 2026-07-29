@@ -1,0 +1,15 @@
+{
+    "AcquisitionTime": "14:31:0.620000",
+    "EchoNumber": 3,
+    "EchoTime": 0.01542,
+    "EchoTime1": 0.00584,
+    "EchoTime2": 0.01063,
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "P",
+        "ND",
+        "PHASE"
+    ],
+    "SeriesNumber": 5
+}

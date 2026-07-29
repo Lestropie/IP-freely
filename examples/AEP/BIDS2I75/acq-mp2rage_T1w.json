@@ -1,0 +1,10 @@
+{
+    "ImageComments": "Simulated T1 Contrast",
+    "ImageType": [
+        "DERIVED",
+        "PRIMARY",
+        "M",
+        "ND"
+    ],
+    "RawImage": false
+}

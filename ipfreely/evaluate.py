@@ -36,6 +36,37 @@ def evaluate(
     any_inheritance: bool = False
     any_warning: bool = False
 
+    # Enforce suffix requirements before any inheritance analysis.
+    # A data file must always carry a datatype suffix; a metadata file must too,
+    #   unless the ruleset explicitly permits suffixless metadata files. A file
+    #   violating this is malformed with respect to the ruleset, so report every
+    #   offending file and halt (rather than raising on the first encountered).
+    suffixless_datafiles: BIDSFilePathList = [
+        datapath for datapath in graph.m4d if datapath.suffix is None
+    ]
+    suffixless_metafiles: BIDSFilePathList = (
+        [metapath for metapath in graph.d4m if metapath.suffix is None]
+        if ruleset.compulsory_suffix
+        else []
+    )
+    if suffixless_datafiles:
+        logger.critical(
+            f"{len(suffixless_datafiles)} data"
+            f" file{'s' if len(suffixless_datafiles) > 1 else ''}"
+            " lacking a datatype suffix, which is required for all data files:"
+            f" [{'; '.join(map(str, suffixless_datafiles))}]"
+        )
+    if suffixless_metafiles:
+        logger.critical(
+            f"{len(suffixless_metafiles)} metadata"
+            f" file{'s' if len(suffixless_metafiles) > 1 else ''}"
+            f" lacking a suffix, which ruleset {ruleset.name} requires"
+            " of all metadata files:"
+            f" [{'; '.join(map(str, suffixless_metafiles))}]"
+        )
+    if suffixless_datafiles or suffixless_metafiles:
+        return ReturnCodes.MALFORMED_DATASET
+
     multiinheritance_count_m4d: int = 0
     forbidden_multiinheritance: BIDSFilePathList = []
     invalid_nearest_inheritance: BIDSFilePathList = []

@@ -1,0 +1,16 @@
+{
+    "AcquisitionTime": "13:57:0.312500",
+    "ImagingFrequency": 123.230699,
+    "ProtocolName": "T1map_MP2RAGE_Sag_AP",
+    "SAR": 0.0173708,
+    "ShimSetting": [
+        2563,
+        -11312,
+        -11289,
+        140,
+        -14,
+        -351,
+        -7,
+        73
+    ]
+}

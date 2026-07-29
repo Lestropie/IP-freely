@@ -1,0 +1,25 @@
+{
+    "ImageOrientationPatientDICOM": [
+        0,
+        1,
+        0,
+        0.0191974,
+        0,
+        -0.999816
+    ],
+    "ImageOrientationText": "Sag>Tra(-1.1)",
+    "ImagingFrequency": 123.23786,
+    "ProtocolName": "T1map_MP2RAGE_Sag_AP-",
+    "SAR": 0.016706,
+    "ShimSetting": [
+        -1286,
+        4782,
+        -11046,
+        196,
+        -45,
+        -448,
+        -39,
+        -33
+    ],
+    "TxRefAmp": 228.286
+}

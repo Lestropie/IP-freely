@@ -16,7 +16,12 @@ RUN apt-get update -yy && \
     deno cache jsr:@bids/validator@2.0.7 && \
     rm -rf /var/apt/lists
 
-RUN git clone https://github.com/Lestropie/IP-Freely ipfreely --branch 0.1.0 --depth 1
+# Use the local worktree rather than cloning a fixed release tag, so that
+# in-development source changes are exercised by the test suite.
+# NOTE: this requires the build context to be the repository root, e.g.
+#   docker build -f testing/Dockerfile -t ip-freely:testing .
+COPY ipfreely /ipfreely/ipfreely
+COPY run.py version requirements.txt /ipfreely/
 
 WORKDIR /bids-examples
 RUN git clone https://github.com/Lestropie/bids-examples . && \
@@ -25,10 +30,10 @@ WORKDIR /
 
 ENV PYTHONPATH="/ipfreely"
 
-COPY test_ipfreely.py /test_ipfreely.py
-COPY test_pybids.py /test_pybids.py
-COPY test_validators.py /test_validators.py
-COPY legacy_config.json /legacy_config.json
-COPY schema_config.json /schema_config.json
+COPY testing/test_ipfreely.py /test_ipfreely.py
+COPY testing/test_pybids.py /test_pybids.py
+COPY testing/test_validators.py /test_validators.py
+COPY testing/legacy_config.json /legacy_config.json
+COPY testing/schema_config.json /schema_config.json
 
 ENTRYPOINT ["python3", "/test_ipfreely.py", "/bids-examples"]

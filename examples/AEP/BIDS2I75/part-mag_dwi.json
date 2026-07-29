@@ -1,0 +1,12 @@
+{
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "DIFFUSION",
+        "NONE",
+        "MB",
+        "ND",
+        "NORM",
+        "MOSAIC"
+    ]
+}

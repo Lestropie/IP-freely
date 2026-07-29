@@ -1,0 +1,15 @@
+{
+    "ImagingFrequency": 123.230683,
+    "ReceiveCoilActiveElements": "HC1-7;NC1,2",
+    "SAR": 0.00987845,
+    "ShimSetting": [
+        2570,
+        -11290,
+        -11259,
+        255,
+        24,
+        -26,
+        -65,
+        64
+    ]
+}

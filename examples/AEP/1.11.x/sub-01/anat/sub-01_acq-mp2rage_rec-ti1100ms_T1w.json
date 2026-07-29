@@ -1,0 +1,41 @@
+{
+    "AcquisitionMatrixPE": 240,
+    "AcquisitionTime": "13:57:0.312500",
+    "DwellTime": 8.1e-06,
+    "EchoTime": 0.00288,
+    "ImageComments": "Simulated T1 Contrast",
+    "ImageType": [
+        "DERIVED",
+        "PRIMARY",
+        "M",
+        "ND"
+    ],
+    "ImagingFrequency": 123.230699,
+    "InversionTime": 1.1,
+    "MatrixCoilMode": "SENSE",
+    "PercentPhaseFOV": 93.75,
+    "PhaseEncodingSteps": 240,
+    "PixelBandwidth": 240,
+    "ProtocolName": "T1map_MP2RAGE_Sag_AP",
+    "PulseSequenceDetails": "%CustomerSeq%\\cstfl_wip925b",
+    "RawImage": false,
+    "ReconMatrixPE": 240,
+    "RepetitionTime": 5,
+    "SAR": 0.0173708,
+    "ScanOptions": "IR",
+    "SequenceName": "WIP_cmp3d1_16ns",
+    "SeriesDescription": "T1map_MP2RAGE_Sag_AP_T1_Images_SIM-TI1100ms",
+    "SeriesNumber": 33,
+    "ShimSetting": [
+        2563,
+        -11312,
+        -11289,
+        140,
+        -14,
+        -351,
+        -7,
+        73
+    ],
+    "SliceThickness": 1,
+    "WipMemBlock": "WIP_Identifier: WIP#925B"
+}

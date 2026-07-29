@@ -7,6 +7,7 @@ import os
 import pathlib
 import sys
 from ipfreely.evaluate import evaluate
+from ipfreely.export import CONVERSION_RULESETS
 from ipfreely.export import export
 from ipfreely.extensions import EXTENSIONS
 from ipfreely.filepath import BIDSError
@@ -112,6 +113,13 @@ def main():
         " to a JSON file.",
     )
     parser.add_argument(
+        "-p",
+        "--profile",
+        help="Profile the dataset conversion performed by -c / --convert,"
+        " writing raw pstats to the nominated file"
+        " and a summary of the most expensive functions to stderr.",
+    )
+    parser.add_argument(
         "-r",
         "--ruleset",
         help="Analyse the dataset under a specific IP ruleset.",
@@ -135,6 +143,13 @@ def main():
     except argparse.ArgumentError as e:
         sys.stderr.write(f"Error parsing command-line: {e}\n")
         sys.exit()
+
+    if args.profile is not None and args.convert is None:
+        sys.stderr.write(
+            "Option -p / --profile only has an effect in combination with"
+            " -c / --convert\n"
+        )
+        sys.exit(1)
 
     bids_dir = pathlib.Path(args.bids_dir)
     if not bids_dir.is_dir():
@@ -172,6 +187,8 @@ def main():
             ruleset = RULESETS["PR1003"]
         elif bids_version_string == "Issue 1195":
             ruleset = RULESETS["I1195"]
+        elif bids_version_string == "BIDS 2.0 Issue 75":
+            ruleset = RULESETS["BIDS2I75"]
         else:
             try:
                 bids_version = tuple(int(i) for i in bids_version_string.split("."))
@@ -195,9 +212,10 @@ def main():
             )
 
     if args.convert is not None:
-        if args.convert[0] not in RULESETS:
+        if args.convert[0] not in CONVERSION_RULESETS:
             sys.stderr.write(
-                f'Unsupported ruleset "{args.convert[0]}" nominated for conversion\n'
+                f'Unsupported ruleset "{args.convert[0]}" nominated for conversion;'
+                f" supported targets are: {CONVERSION_RULESETS}\n"
             )
             sys.exit(1)
         args.convert[1] = pathlib.Path(args.convert[1])
@@ -234,10 +252,24 @@ def main():
         # metadata2json_manual(bids_dir, graph, args.metadata)
 
     if args.convert is not None:
-        export(bids_dir, metadata, RULESETS[args.convert[0]], args.convert[1])
+        try:
+            export(
+                bids_dir,
+                metadata,
+                RULESETS[args.convert[0]],
+                args.convert[1],
+                profile=pathlib.Path(args.profile) if args.profile else None,
+            )
+        except BIDSError as e:
+            logger.critical(f"Error during dataset conversion: {e}\n")
+            sys.exit(ReturnCodes.MALFORMED_DATASET)
 
     return return_code
 
 
 if __name__ == "__main__":
-    main()
+    # Propagate the evaluation return code to the process exit status, so that
+    #   MALFORMED_DATASET / IP_VIOLATION / WARNINGS_AS_ERRORS outcomes are
+    #   observable by callers (e.g. the "forbidden" ruleset's detection of any
+    #   Inheritance Principle usage via the command return code).
+    sys.exit(main())

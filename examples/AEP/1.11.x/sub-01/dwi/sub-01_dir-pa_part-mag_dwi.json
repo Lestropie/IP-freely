@@ -1,0 +1,20 @@
+{
+    "AcquisitionTime": "13:53:59.012500",
+    "ImageType": [
+        "ORIGINAL",
+        "PRIMARY",
+        "DIFFUSION",
+        "NONE",
+        "MB",
+        "ND",
+        "NORM",
+        "MOSAIC"
+    ],
+    "ImagingFrequency": 123.230687,
+    "PhaseEncodingDirection": "j",
+    "ProtocolName": "DWI_Ax_AP_51Dir_InvROPE-",
+    "SAR": 0.1307,
+    "SeriesDescription": "DWI_Ax_AP_51Dir_InvROPE-",
+    "SeriesNumber": 24,
+    "WipMemBlock": "a915fb46-a764-4cad-a181-7c836bfc929e||Sequence: R016 ve11e/master r/434b28f1; Aug  7 2019 19:06:17 by eja"
+}
